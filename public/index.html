@@ -1,1 +1,31 @@
-<h1>yo!</h1>
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="phaser.min.js"></script>
+    <script type="module" src="MainMenu.js"></script>
+    <style>
+        @font-face {
+            font-family: 'GipsieroOwtLine';
+            src: url('assets/fonts/Gipsiero OwtLine.otf') format('opentype');
+        }
+    </style>
+</head>
+<body>
+    <script type="module">
+    import MainMenu from './MainMenu.js';
+
+    const config = {
+        type: Phaser.AUTO,
+        width: window.innerWidth,
+        height: window.innerHeight,
+        scene: [MainMenu],
+        scale: {
+            mode: Phaser.Scale.ScaleModes.RESIZE,
+            autoCenter: Phaser.Scale.Center.CENTER_BOTH
+        }
+    };
+
+    const game = new Phaser.Game(config);
+    </script>
+</body>
+</html>
