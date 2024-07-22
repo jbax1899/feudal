@@ -111,7 +111,7 @@ class MainMenu extends Phaser.Scene {
 
         // Define buttons with their labels
         const buttons = [
-            { label: 'Play Computer' },
+            { label: 'Play Computer', onClick: () => this.scene.switch('GameScene')},
             { label: 'Play Online' },
             { label: 'Help', onClick: () => this.changeMenu('Help')},
             { label: 'Settings' },

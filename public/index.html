@@ -3,6 +3,7 @@
 <head>
     <script src="phaser.min.js"></script>
     <script type="module" src="MainMenu.js"></script>
+    <script type="module" src="GameScene.js"></script>
     <style>
         html, body {
             margin: 0;
@@ -19,12 +20,13 @@
 <body>
     <script type="module">
     import MainMenu from './MainMenu.js';
+    import GameScene from './GameScene.js';
 
     const config = {
         type: Phaser.AUTO,
         width: window.innerWidth,
         height: window.innerHeight,
-        scene: [MainMenu],
+        scene: [MainMenu, GameScene],
         scale: {
             mode: Phaser.Scale.ScaleModes.RESIZE,
             autoCenter: Phaser.Scale.Center.CENTER_BOTH
