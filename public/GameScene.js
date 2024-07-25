@@ -24,6 +24,8 @@ class GameScene extends Phaser.Scene {
         this.ui.preload();
         this.board = new Board(this);
         this.board.preload();
+        this.load.image('piece_blank', 'img/piece_blank.png');
+        this.load.image('piece_king', 'img/piece_king.png');
     }
 
     create() {
@@ -55,7 +57,6 @@ class GameScene extends Phaser.Scene {
 
     update() {
         this.gameManager.update();
-        //this.updateBackgroundPosition();
     }
 
     drawBackground() {
@@ -69,7 +70,7 @@ class GameScene extends Phaser.Scene {
         // Create a new background image
         this.background = this.add.image(0, 0, 'background').setOrigin(0.5, 0.5);
         this.background.setAlpha(0.4); // Set translucency
-        this.background.setDepth(-1);
+        this.background.setDepth(-2);
     
         // Get the original size of the background image
         const originalWidth = this.background.width;
