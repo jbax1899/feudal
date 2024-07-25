@@ -40,11 +40,34 @@ class Board {
                 const tileType = boardData.tiles[row][col];
                 const tileKey = tiles[tileType];
                 if (tileKey) {
+                    // sprite
                     const sprite = this.scene.add.sprite(col * this.tileSize, row * this.tileSize, tileKey)
                         .setOrigin(0)
                         .setDisplaySize(this.tileSize, this.tileSize);
                     this.boardContainer.add(sprite); // Add to container
+
+                    // outline
+                    const outline = this.scene.add.graphics();
+                    outline.lineStyle(2, 0x000000);
+                    outline.strokeRect(col * this.tileSize, row * this.tileSize, this.tileSize, this.tileSize);
+                    this.boardContainer.add(outline); // Add to container
                 }
+
+                // Add thick lines after the grid is drawn
+                const thickLineGraphics = this.scene.add.graphics();
+                thickLineGraphics.lineStyle(6, 0x000000);
+                // Vertical line between columns 12 and 13
+                thickLineGraphics.beginPath();
+                thickLineGraphics.moveTo(12 * this.tileSize, 0);
+                thickLineGraphics.lineTo(12 * this.tileSize, numRows * this.tileSize);
+                thickLineGraphics.strokePath();
+                // Horizontal line between rows 12 and 13
+                thickLineGraphics.beginPath();
+                thickLineGraphics.moveTo(0, 12 * this.tileSize);
+                thickLineGraphics.lineTo(numCols * this.tileSize, 12 * this.tileSize);
+                thickLineGraphics.strokePath();
+                // Add to container
+                this.boardContainer.add(thickLineGraphics); 
             }
         }
     }    
