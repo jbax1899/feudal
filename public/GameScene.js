@@ -49,6 +49,7 @@ class GameScene extends Phaser.Scene {
         // Handle window resize events
         this.scale.on('resize', (gameSize) => {
             this.drawBackground();
+            this.ui.updateUIPosition();
         });
     }
 
