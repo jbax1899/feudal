@@ -118,37 +118,40 @@ class GameScene extends Phaser.Scene {
             this.isDragging = true;
             this.startX = pointer.x;
             this.startY = pointer.y;
+            this.input.setDefaultCursor('grab'); // Change cursor to closed hand
         });
-
+    
         this.input.on('pointermove', (pointer) => {
             if (this.isDragging) {
                 const dx = pointer.x - this.startX;
                 const dy = pointer.y - this.startY;
-
+    
                 // Move the camera
                 this.cameras.main.scrollX -= dx / this.cameras.main.zoom;
                 this.cameras.main.scrollY -= dy / this.cameras.main.zoom;
-
+    
                 // Re-draw background
                 this.updateBackgroundPosition();
-
+    
                 // Move the UI
                 this.ui.updateUIPosition();
-
+    
                 // Update start position
                 this.startX = pointer.x;
                 this.startY = pointer.y;
             }
         });
-
+    
         this.input.on('pointerup', () => {
             this.isDragging = false;
+            this.input.setDefaultCursor('auto'); // Revert cursor to default
         });
-
+    
         this.input.on('pointerupoutside', () => {
             this.isDragging = false;
+            this.input.setDefaultCursor('auto'); // Revert cursor to default
         });
-
+    
         // Event listener for zooming
         window.addEventListener('wheel', (event) => {
             let zoomFactor = 0.1;
@@ -161,7 +164,43 @@ class GameScene extends Phaser.Scene {
             this.drawBackground();
             this.ui.updateUIPosition();
         });
+    
+        // Variables to store the state of keys
+        this.keys = this.input.keyboard.addKeys({
+            up: Phaser.Input.Keyboard.KeyCodes.W,
+            left: Phaser.Input.Keyboard.KeyCodes.A,
+            down: Phaser.Input.Keyboard.KeyCodes.S,
+            right: Phaser.Input.Keyboard.KeyCodes.D
+        });
     }
+    
+    update(time, delta) {
+        // Continuously check key states and move the camera
+        // We do this instead of event listeners to eliminate the continous press delay
+        const moveSpeed = 0.7 * delta;
+    
+        if (this.keys.up.isDown) {
+            this.cameras.main.scrollY -= moveSpeed / this.cameras.main.zoom;
+        }
+    
+        if (this.keys.left.isDown) {
+            this.cameras.main.scrollX -= moveSpeed / this.cameras.main.zoom;
+        }
+    
+        if (this.keys.down.isDown) {
+            this.cameras.main.scrollY += moveSpeed / this.cameras.main.zoom;
+        }
+    
+        if (this.keys.right.isDown) {
+            this.cameras.main.scrollX += moveSpeed / this.cameras.main.zoom;
+        }
+    
+        // Re-draw background and update UI if any movement happened
+        if (this.keys.up.isDown || this.keys.left.isDown || this.keys.down.isDown || this.keys.right.isDown) {
+            this.updateBackgroundPosition();
+            this.ui.updateUIPosition();
+        }
+    }    
 }
 
 export default GameScene;
