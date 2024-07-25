@@ -26,7 +26,8 @@
         type: Phaser.AUTO,
         width: window.innerWidth,
         height: window.innerHeight,
-        scene: [MainMenu, GameScene],
+        backgroundColor: '#ffffff', // Set background color to white
+        scene: [GameScene, MainMenu],
         scale: {
             mode: Phaser.Scale.ScaleModes.RESIZE,
             autoCenter: Phaser.Scale.Center.CENTER_BOTH
