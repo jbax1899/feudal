@@ -19,10 +19,19 @@ class Board {
         this.drawBoard(boardData);
 
         // Define the interactive area
-        const boardWidth = boardData.width * this.tileSize;
-        const boardHeight = boardData.height * this.tileSize;
+        const boardWidth = boardData.tiles[0].length * this.tileSize;
+        const boardHeight = boardData.tiles.length * this.tileSize;
         this.boardContainer.setSize(boardWidth, boardHeight);
         this.boardContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, boardWidth, boardHeight), Phaser.Geom.Rectangle.Contains);
+        console.log('Board container size:', boardWidth, boardHeight);
+        
+        // Event listener for clicks
+        this.boardContainer.on('pointerdown', (pointer) => {
+            const { x, y } = pointer;
+            console.log(`Clicked on board coordinates: (${x}, ${y})`);
+            const { boardX, boardY } = this.screenToBoard(x, y);
+            console.log(`Clicked on board coordinates: (${boardX}, ${boardY})`);
+        });
     }
 
     drawBoard(boardData) {
@@ -70,7 +79,23 @@ class Board {
                 this.boardContainer.add(thickLineGraphics); 
             }
         }
-    }    
+    }
+
+    // Method to convert screen coordinates to board coordinates
+    screenToBoard(screenX, screenY) {
+        const x = screenX - this.boardContainer.x;
+        const y = screenY - this.boardContainer.y;
+        const boardX = Math.floor(x / this.tileSize);
+        const boardY = Math.floor(y / this.tileSize);
+        return { boardX, boardY };
+    }
+
+    // Method to convert board coordinates to screen coordinates
+    boardToScreen(boardX, boardY) {
+        const x = boardX * this.tileSize + this.boardContainer.x;
+        const y = boardY * this.tileSize + this.boardContainer.y;
+        return { x, y };
+    }
 }
 
 export default Board;
