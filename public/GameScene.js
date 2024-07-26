@@ -24,6 +24,7 @@ class GameScene extends Phaser.Scene {
         this.ui.preload();
         this.board = new Board(this);
         this.board.preload();
+        this.gameManager = new GameManager(this, this.board, this.ui);
         this.load.image('piece_blank', 'img/piece_blank.png');
         this.load.image('piece_king', 'img/piece_king.png');
     }
