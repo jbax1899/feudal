@@ -11,19 +11,113 @@ class Piece {
         'blank',
         'blank'
     ];
+    static moves = [
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false }, // blank
+        { orthogonalRange: 2, diagonalRange: 2, isMounted: false, isSquire: false }, // king
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false }
+    ];
 
-    constructor(scene, type) {
+    constructor(scene, x, y, type, player) {
         this.scene = scene;
+        this.pos = {x, y};
         this.type = type !== undefined ? type : 0;
-        this.key = 'piece_' + Piece.types[this.type];
-    }
-
-    create(x, y) {
+        this.typeName = Piece.types[this.type];
+        this.key = 'piece_' + this.typeName;
+        this.orthogonalRange = Piece.moves[type].orthogonalRange;
+        this.diagonalRange = Piece.moves[type].diagonalRange;
+        this.isMounted = Piece.moves[type].isMounted;
+        this.isSquire = Piece.moves[type].isSquire;
+        this.playerNumber = player;
+        
         // Create the piece sprite and add it to the scene
         this.sprite = this.scene.add.sprite(x, y, this.key)
             .setOrigin(0)
             .setDisplaySize(this.scene.board.tileSize, this.scene.board.tileSize);
-        return this.sprite;
+
+        // Recolor the sprite based on the player number
+        this.recolorSprite();
+
+        // Make the piece sprite interactive
+        this.sprite.setInteractive();
+        this.sprite.on('pointerdown', () => {
+            console.log(`Piece clicked: ${this.typeName}`);
+
+            const priorSelected = this.scene.board.selectedPiece;
+            // If any piece is selected, deselect it
+            if (this.scene.board.selectedPiece !== null) {
+                console.log(`${Piece.types[this.scene.board.selectedPiece.type]} piece deselected`);
+                this.scene.board.deselect();
+            }
+            // Select this piece, if it wasn't already
+            if (priorSelected != this) {
+                this.scene.board.selectedPiece = this;
+                this.scene.board.showMoves(this);
+                console.log(`${Piece.types[this.type]} piece selected`);
+            }
+        });
+    }
+
+    recolorSprite() {
+        const colorData = this.scene.gameManager.playerColors[this.playerNumber - 1];
+        if (!colorData) {
+            console.warn('Invalid player number:', this.playerNumber);
+            return;
+        }
+
+        const colorHex = colorData.color;
+        const color = parseInt(colorHex, 16); // Convert hex color to integer
+
+        // Generate a unique texture key based on player number
+        const textureKey = 'recolored_' + this.key + '_' + this.playerNumber;
+
+        // Check if the texture already exists
+        if (this.scene.textures.exists(textureKey)) {
+            this.sprite.setTexture(textureKey);
+            return; // Exit if texture already exists
+        }
+
+        // Get the current texture and create a new canvas
+        const texture = this.sprite.texture;
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+
+        // Set canvas size to texture size
+        canvas.width = texture.getSourceImage().width;
+        canvas.height = texture.getSourceImage().height;
+
+        // Draw the texture onto the canvas
+        context.drawImage(texture.getSourceImage(), 0, 0);
+
+        // Get image data
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Loop through each pixel and change blue pixels
+        for (let i = 0; i < data.length; i += 4) {
+            if (data[i] === 0 && data[i + 1] === 0 && data[i + 2] === 255) { // Pure blue
+                data[i] = (color >> 16) & 0xff;     // Red
+                data[i + 1] = (color >> 8) & 0xff; // Green
+                data[i + 2] = color & 0xff;         // Blue
+            }
+        }
+
+        // Put modified image data back to canvas
+        context.putImageData(imageData, 0, 0);
+
+        // Create a new texture from the canvas
+        const newTexture = this.scene.textures.createCanvas(textureKey, canvas.width, canvas.height);
+        newTexture.context.drawImage(canvas, 0, 0);
+        newTexture.refresh();
+        
+        // Set the sprite's texture to the new texture
+        this.sprite.setTexture(textureKey);
     }
 }
 
