@@ -45,7 +45,7 @@ class Board {
 
             // DEBUG - change player for piece creation
             if (key === '=') {
-                if (this.selectedPlayer < 4) {
+                if (this.selectedPlayer < this.scene.gameManager.playerColors.length) {
                     this.selectedPlayer++;
                 }
                 console.log("Selected player: " + this.selectedPlayer);
@@ -61,6 +61,11 @@ class Board {
         // Event listener for clicks
         // Was this.boardContainer, but only worked for top-left quarter of board?
         this.scene.input.on('pointerdown', (pointer) => {
+            // Right-click deselects
+            if (pointer.rightButtonDown()) {
+                this.deselect();
+            }
+
             // Convert view coordinates to world coordinates
             const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
             
@@ -162,10 +167,9 @@ class Board {
 
     getTile(boardX, boardY) {
         // Check if coordinate is within the board
-        if (boardX < 0 || boardX >= this.boardWidth || boardY < 0 || boardY >= this.boardHeight) {
-            return 0;
+        if (this.isCoordinate(boardX, boardY)) {
+            return this.boardData.tiles[boardY][boardX];
         }
-        return this.boardData.tiles[boardY][boardX];
     }
 
     // Method to handle piece selection
@@ -220,102 +224,102 @@ class Board {
         return true; // Successfully removed the piece
     }
 
-    isLegalMove(boardX, boardY) {
+    isLegalMove(boardX, boardY, piece) {
         // Check if the coordinates are within the board bounds
-        if (boardX < 0 || boardX >= this.boardWidth || boardY < 0 || boardY >= this.boardHeight) {
-            return false;
+        if (!this.isCoordinate(boardX, boardY)) {
+            return 0;
         }
     
-        // Check if the space is occupied by another piece
-        if (this.getPiece(boardX, boardY)) {
-            console.log("cannot, piece in the way")
-            return false;
+        const otherPiece = this.getPiece(boardX, boardY);
+        // Check if the space is occupied by another piece by the same player
+        if (otherPiece && otherPiece.playerNumber == piece.playerNumber) {
+            return 0;
+        }
+        // Check if the space is occupied by an enemy player's piece
+        if (otherPiece && otherPiece.playerNumber.playerNumber != piece.playerNumber) {
+            return 2;
         }
 
         // Check if the space is a mountain (impassible)
         if (this.getTile(boardX, boardY) == 3) {
+            return 0;
+        }
+
+        // Check if the piece is mounted and if the tile is rough terrain
+        if (piece.isMounted && this.getTile(boardX, boardY) == 2) {
             return false;
         }
 
-        return true; // All checks passed, is a legal move
+        return 1; // All checks passed, is a legal move
     }
 
-    drawMoveCircle(boardX, boardY) {
+    drawMoveCircle(boardX, boardY, enemy) {
         const x = boardX * this.tileSize + this.tileSize / 2;
         const y = boardY * this.tileSize + this.tileSize / 2;
-        const circle = this.scene.add.circle(x, y, this.tileSize / 4, 0x00ff00, 0.5); // Green circle with 50% alpha
-        circle.boardX = boardX;
-        circle.boardY = boardY;
-        this.boardContainer.add(circle); // Add the circle to the board container
-        this.moveCircles.push(circle); // Store the circle reference
+        if (enemy) {
+            // Draw red circle around enemy
+            const graphics = this.scene.add.graphics();
+            const thickness = 3;
+            graphics.lineStyle(thickness, 0xff0000, 1); // red color, 2 pixels thick, full opacity
+            graphics.strokeCircle(x, y, (this.tileSize / 2) - thickness);
+            // Store the graphics object so it can be managed or removed later
+            graphics.boardX = boardX;
+            graphics.boardY = boardY;
+            //this.boardContainer.add(graphics); // Add the graphics to the board container
+            this.moveCircles.push(graphics); // Store the graphics reference
+        } else {
+            // Draw small move circle
+            const circle = this.scene.add.circle(x, y, this.tileSize / 7, 0x00ff00, 0.5); // Green circle with 50% alpha
+            circle.boardX = boardX;
+            circle.boardY = boardY;
+            //this.boardContainer.add(circle); // Add the circle to the board container
+            this.moveCircles.push(circle); // Store the circle reference
+        }
     }
 
-    // Check if the clicked coordinate is a move circle
+    // Check if the clicked coordinate has a move circle
     isMoveCircle(boardX, boardY) {
         return this.moveCircles.some(circle => circle.boardX === boardX && circle.boardY === boardY);
     }
 
     showMoves(piece) {
-        const orthogonalRange = piece.orthogonalRange;
-        const diagonalRange = piece.diagonalRange;
+        const { orthogonalRange, diagonalRange, typeName } = piece;
         const { boardX, boardY } = this.screenToBoard(piece.sprite.x, piece.sprite.y);
     
-        // Draw orthogonal moves
-        // Up
-        for (let i = 1; i <= orthogonalRange; i++) {
-            if (this.isLegalMove(boardX, boardY + i)) {
-                this.drawMoveCircle(boardX, boardY + i); // Up
-            } else break;
-        }
-        
-        // Down
-        for (let i = 1; i <= orthogonalRange; i++) {
-            if (this.isLegalMove(boardX, boardY - i)) {
-                this.drawMoveCircle(boardX, boardY - i); // Down
-            } else break;
-        }
-        
-        // Right
-        for (let i = 1; i <= orthogonalRange; i++) {
-            if (this.isLegalMove(boardX + i, boardY)) {
-                this.drawMoveCircle(boardX + i, boardY); // Right
-            } else break;
-        }
-        
-        // Left
-        for (let i = 1; i <= orthogonalRange; i++) {
-            if (this.isLegalMove(boardX - i, boardY)) {
-                this.drawMoveCircle(boardX - i, boardY); // Left
-            } else break;
-        }
+        const drawMoves = (moves) => {
+            moves.forEach(move => {
+                const newX = boardX + move.dx;
+                const newY = boardY + move.dy;
+                const moveType = this.isLegalMove(newX, newY, piece);
+                if (moveType === 1) {
+                    this.drawMoveCircle(newX, newY, false); // Normal move
+                } else if (moveType === 2) {
+                    this.drawMoveCircle(newX, newY, true); // Enemy move
+                }
+            });
+        };
     
-        // Draw diagonal moves
-        // Bottom-right
-        for (let i = 1; i <= diagonalRange; i++) {
-            if (this.isLegalMove(boardX + i, boardY + i)) {
-                this.drawMoveCircle(boardX + i, boardY + i); // Bottom-right
-            } else break;
-        }
-        
-        // Top-right
-        for (let i = 1; i <= diagonalRange; i++) {
-            if (this.isLegalMove(boardX + i, boardY - i)) {
-                this.drawMoveCircle(boardX + i, boardY - i); // Top-right
-            } else break;
-        }
-        
-        // Bottom-left
-        for (let i = 1; i <= diagonalRange; i++) {
-            if (this.isLegalMove(boardX - i, boardY + i)) {
-                this.drawMoveCircle(boardX - i, boardY + i); // Bottom-left
-            } else break;
-        }
-        
-        // Top-left
-        for (let i = 1; i <= diagonalRange; i++) {
-            if (this.isLegalMove(boardX - i, boardY - i)) {
-                this.drawMoveCircle(boardX - i, boardY - i); // Top-left
-            } else break;
+        if (typeName === 'squire') {
+            const knightMoves = [
+                { dx: 1, dy: 2 }, { dx: 1, dy: -2 }, { dx: -1, dy: 2 }, { dx: -1, dy: -2 },
+                { dx: 2, dy: 1 }, { dx: 2, dy: -1 }, { dx: -2, dy: 1 }, { dx: -2, dy: -1 }
+            ];
+            drawMoves(knightMoves);
+        } else {
+            const orthogonalMoves = [
+                ...Array(orthogonalRange).fill().map((_, i) => ({ dx: 0, dy: i + 1 })),
+                ...Array(orthogonalRange).fill().map((_, i) => ({ dx: 0, dy: -(i + 1) })),
+                ...Array(orthogonalRange).fill().map((_, i) => ({ dx: i + 1, dy: 0 })),
+                ...Array(orthogonalRange).fill().map((_, i) => ({ dx: -(i + 1), dy: 0 }))
+            ];
+            const diagonalMoves = [
+                ...Array(diagonalRange).fill().map((_, i) => ({ dx: i + 1, dy: i + 1 })),
+                ...Array(diagonalRange).fill().map((_, i) => ({ dx: i + 1, dy: -(i + 1) })),
+                ...Array(diagonalRange).fill().map((_, i) => ({ dx: -(i + 1), dy: i + 1 })),
+                ...Array(diagonalRange).fill().map((_, i) => ({ dx: -(i + 1), dy: -(i + 1) }))
+            ];
+            drawMoves(orthogonalMoves);
+            drawMoves(diagonalMoves);
         }
     }    
 

@@ -35,6 +35,11 @@
     };
 
     const game = new Phaser.Game(config);
+
+    // Prevent the default right-click context menu
+    document.addEventListener('contextmenu', function (event) {
+        event.preventDefault();
+    });
     </script>
 </body>
 </html>

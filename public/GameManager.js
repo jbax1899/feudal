@@ -1,9 +1,11 @@
 class GameManager {
     playerColors = [
-        { color: 'FF0000', name: 'red' },
-        { color: '0000FF', name: 'blue' },
-        { color: '00FF00', name: 'green' },
-        { color: 'FFFF00', name: 'yellow' }
+        { color: 'D4F8F4', name: 'lightblue' },
+        { color: '459E9C', name: 'blue' },
+        { color: '194B52', name: 'teal' },
+        { color: 'E1CEA4', name: 'lightbrown' },
+        { color: 'A06B41', name: 'brown' },
+        { color: '42281B', name: 'darkbrown' }
     ];
 
     constructor(scene, board, ui) {

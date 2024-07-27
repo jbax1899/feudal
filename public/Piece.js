@@ -2,26 +2,24 @@ class Piece {
     static types = [
         'blank',
         'king',
-        'blank',
-        'blank',
-        'blank',
-        'blank',
-        'blank',
-        'blank',
-        'blank',
-        'blank'
+        'prince',
+        'duke',
+        'knight',
+        'sergeant',
+        'pikeman',
+        'squire',
+        'archer',
     ];
     static moves = [
-        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false }, // blank
-        { orthogonalRange: 2, diagonalRange: 2, isMounted: false, isSquire: false }, // king
-        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
-        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
-        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
-        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
-        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
-        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
-        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false },
-        { orthogonalRange: 0, diagonalRange: 0, isMounted: false, isSquire: false }
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // blank
+        { orthogonalRange: 2, diagonalRange: 2, isMounted: false},      // king
+        { orthogonalRange: 999, diagonalRange: 999, isMounted: true},   // prince
+        { orthogonalRange: 999, diagonalRange: 999, isMounted: true},   // duke
+        { orthogonalRange: 999, diagonalRange: 999, isMounted: true},   // knight
+        { orthogonalRange: 1, diagonalRange: 12, isMounted: false},     // sergeant
+        { orthogonalRange: 12, diagonalRange: 1, isMounted: false},     // pikeman
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // squire (moves like chess kight)
+        { orthogonalRange: 3, diagonalRange: 3, isMounted: false}       // archer
     ];
 
     constructor(scene, x, y, type, player) {
@@ -52,14 +50,14 @@ class Piece {
             const priorSelected = this.scene.board.selectedPiece;
             // If any piece is selected, deselect it
             if (this.scene.board.selectedPiece !== null) {
-                console.log(`${Piece.types[this.scene.board.selectedPiece.type]} piece deselected`);
+                console.log(`${Piece.types[this.scene.board.selectedPiece.type]} piece deselected (p` + priorSelected.playerNumber + ')');
                 this.scene.board.deselect();
             }
             // Select this piece, if it wasn't already
             if (priorSelected != this) {
                 this.scene.board.selectedPiece = this;
                 this.scene.board.showMoves(this);
-                console.log(`${Piece.types[this.type]} piece selected`);
+                console.log(`${Piece.types[this.type]} piece selected (p` + this.playerNumber + ')');
             }
         });
     }

@@ -27,6 +27,13 @@ class GameScene extends Phaser.Scene {
         this.gameManager = new GameManager(this, this.board, this.ui);
         this.load.image('piece_blank', 'img/piece_blank.png');
         this.load.image('piece_king', 'img/piece_king.png');
+        this.load.image('piece_prince', 'img/piece_prince.png');
+        this.load.image('piece_duke', 'img/piece_duke.png');
+        this.load.image('piece_knight', 'img/piece_knight.png');
+        this.load.image('piece_sergeant', 'img/piece_sergeant.png');
+        this.load.image('piece_pikeman', 'img/piece_pikeman.png');
+        this.load.image('piece_squire', 'img/piece_squire.png');
+        this.load.image('piece_archer', 'img/piece_archer.png');
     }
 
     create() {
