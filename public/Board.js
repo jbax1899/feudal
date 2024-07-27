@@ -282,12 +282,33 @@ class Board {
         return this.moveCircles.some(circle => circle.boardX === boardX && circle.boardY === boardY);
     }
 
+    // Draws move circles
     showMoves(piece) {
         const { orthogonalRange, diagonalRange, typeName } = piece;
         const { boardX, boardY } = this.screenToBoard(piece.sprite.x, piece.sprite.y);
     
-        const drawMoves = (moves) => {
-            moves.forEach(move => {
+        const drawDirectionalMoves = (dx, dy, range) => {
+            for (let i = 1; i <= range; i++) {
+                const newX = boardX + i * dx;
+                const newY = boardY + i * dy;
+                const moveType = this.isLegalMove(newX, newY, piece);
+                if (moveType === 1) {
+                    this.drawMoveCircle(newX, newY, false); // Normal move
+                } else if (moveType === 2) {
+                    this.drawMoveCircle(newX, newY, true); // Enemy move
+                    break;
+                } else {
+                    break; // Illegal move
+                }
+            }
+        };
+    
+        if (typeName === 'squire') {
+            const knightMoves = [
+                { dx: 1, dy: 2 }, { dx: 1, dy: -2 }, { dx: -1, dy: 2 }, { dx: -1, dy: -2 },
+                { dx: 2, dy: 1 }, { dx: 2, dy: -1 }, { dx: -2, dy: 1 }, { dx: -2, dy: -1 }
+            ];
+            knightMoves.forEach(move => {
                 const newX = boardX + move.dx;
                 const newY = boardY + move.dy;
                 const moveType = this.isLegalMove(newX, newY, piece);
@@ -297,31 +318,20 @@ class Board {
                     this.drawMoveCircle(newX, newY, true); // Enemy move
                 }
             });
-        };
-    
-        if (typeName === 'squire') {
-            const knightMoves = [
-                { dx: 1, dy: 2 }, { dx: 1, dy: -2 }, { dx: -1, dy: 2 }, { dx: -1, dy: -2 },
-                { dx: 2, dy: 1 }, { dx: 2, dy: -1 }, { dx: -2, dy: 1 }, { dx: -2, dy: -1 }
-            ];
-            drawMoves(knightMoves);
         } else {
-            const orthogonalMoves = [
-                ...Array(orthogonalRange).fill().map((_, i) => ({ dx: 0, dy: i + 1 })),
-                ...Array(orthogonalRange).fill().map((_, i) => ({ dx: 0, dy: -(i + 1) })),
-                ...Array(orthogonalRange).fill().map((_, i) => ({ dx: i + 1, dy: 0 })),
-                ...Array(orthogonalRange).fill().map((_, i) => ({ dx: -(i + 1), dy: 0 }))
-            ];
-            const diagonalMoves = [
-                ...Array(diagonalRange).fill().map((_, i) => ({ dx: i + 1, dy: i + 1 })),
-                ...Array(diagonalRange).fill().map((_, i) => ({ dx: i + 1, dy: -(i + 1) })),
-                ...Array(diagonalRange).fill().map((_, i) => ({ dx: -(i + 1), dy: i + 1 })),
-                ...Array(diagonalRange).fill().map((_, i) => ({ dx: -(i + 1), dy: -(i + 1) }))
-            ];
-            drawMoves(orthogonalMoves);
-            drawMoves(diagonalMoves);
+            // Orthogonal moves
+            drawDirectionalMoves(0, 1, orthogonalRange);  // Up
+            drawDirectionalMoves(0, -1, orthogonalRange); // Down
+            drawDirectionalMoves(1, 0, orthogonalRange);  // Right
+            drawDirectionalMoves(-1, 0, orthogonalRange); // Left
+    
+            // Diagonal moves
+            drawDirectionalMoves(1, 1, diagonalRange);    // Bottom-right
+            drawDirectionalMoves(1, -1, diagonalRange);   // Top-right
+            drawDirectionalMoves(-1, 1, diagonalRange);   // Bottom-left
+            drawDirectionalMoves(-1, -1, diagonalRange);  // Top-left
         }
-    }    
+    }
 
     hideMoves() {
         this.moveCircles.forEach(circle => circle.destroy()); // Remove each circle from the scene
