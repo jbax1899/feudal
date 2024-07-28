@@ -220,7 +220,7 @@ class Board {
         // Remove the piece sprite and remove it from the array
         this.pieces[pieceIndex].sprite.destroy();
         this.pieces.splice(pieceIndex, 1);
-        console.log(`Removed piece from (${boardX}, ${boardY})`);
+        //console.log(`Removed piece from (${boardX}, ${boardY})`);
         return true; // Successfully removed the piece
     }
 
@@ -256,26 +256,32 @@ class Board {
     drawMoveCircle(boardX, boardY, enemy) {
         const x = boardX * this.tileSize + this.tileSize / 2;
         const y = boardY * this.tileSize + this.tileSize / 2;
+    
         if (enemy) {
             // Draw red circle around enemy
             const graphics = this.scene.add.graphics();
             const thickness = 3;
-            graphics.lineStyle(thickness, 0xff0000, 1); // red color, 2 pixels thick, full opacity
+            graphics.lineStyle(thickness, 0xff0000, 1); // Red color, 3 pixels thick, full opacity
             graphics.strokeCircle(x, y, (this.tileSize / 2) - thickness);
-            // Store the graphics object so it can be managed or removed later
+            graphics.setInteractive(new Phaser.Geom.Circle(x, y, (this.tileSize / 2) - thickness), Phaser.Geom.Circle.Contains);
+            graphics.on('pointerdown', () => {
+                this.capturePiece(this.selectedPiece, boardX, boardY);
+            });
             graphics.boardX = boardX;
             graphics.boardY = boardY;
-            //this.boardContainer.add(graphics); // Add the graphics to the board container
             this.moveCircles.push(graphics); // Store the graphics reference
         } else {
             // Draw small move circle
             const circle = this.scene.add.circle(x, y, this.tileSize / 7, 0x00ff00, 0.5); // Green circle with 50% alpha
+            circle.setInteractive();
+            circle.on('pointerdown', () => {
+                this.movePiece(this.selectedPiece, boardX, boardY);
+            });
             circle.boardX = boardX;
             circle.boardY = boardY;
-            //this.boardContainer.add(circle); // Add the circle to the board container
             this.moveCircles.push(circle); // Store the circle reference
         }
-    }
+    }    
 
     // Check if the clicked coordinate has a move circle
     isMoveCircle(boardX, boardY) {
@@ -350,7 +356,15 @@ class Board {
         piece.pos.x = targetX;
         piece.pos.y = targetY;
         this.deselect();
-        console.log(`Moved ${piece.typeName} piece to: ${targetX}, ${targetY}`);
+        //console.log(`Moved ${piece.typeName} piece to: ${targetX}, ${targetY}`);
+    }
+
+    capturePiece(piece, boardX, boardY) {
+        const enemyPiece = this.getPiece(boardX, boardY);
+        if (enemyPiece) {
+            this.removePiece(boardX, boardY); // Remove the enemy piece
+        }
+        this.movePiece(piece, boardX, boardY);
     }
 }
 

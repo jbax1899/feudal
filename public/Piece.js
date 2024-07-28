@@ -45,8 +45,6 @@ class Piece {
         // Make the piece sprite interactive
         this.sprite.setInteractive();
         this.sprite.on('pointerdown', () => {
-            console.log(`Piece clicked: ${this.typeName}`);
-
             const priorSelected = this.scene.board.selectedPiece;
             // If any piece is selected, deselect it
             if (this.scene.board.selectedPiece !== null) {
@@ -54,7 +52,7 @@ class Piece {
                 this.scene.board.deselect();
             }
             // Select this piece, if it wasn't already
-            if (priorSelected != this) {
+            if (priorSelected !== this) {
                 this.scene.board.selectedPiece = this;
                 this.scene.board.showMoves(this);
                 console.log(`${Piece.types[this.type]} piece selected (p` + this.playerNumber + ')');
