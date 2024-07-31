@@ -1,5 +1,4 @@
 import Board from './Board.js';
-import Player from './Player.js';
 import UI from './UI.js';
 import GameManager from './GameManager.js';
 
@@ -11,7 +10,6 @@ class GameScene extends Phaser.Scene {
             teal: 0x008080,
             darkteal: 0x004d4d,
         };
-        this.ui = null;
         this.isDragging = false;
         this.startX = 0;
         this.startY = 0;
@@ -19,12 +17,11 @@ class GameScene extends Phaser.Scene {
 
     preload() {
         this.load.setBaseURL('assets');
+        // Background
         this.load.image('background', 'img/menu-landscape.svg');
-        this.ui = new UI(this);
-        this.ui.preload();
-        this.board = new Board(this);
-        this.board.preload();
-        this.gameManager = new GameManager(this, this.board, this.ui);
+        // UI
+        this.load.image('menubutton', 'img/menubutton.svg');
+        // Pieces
         this.load.image('piece_blank', 'img/piece_blank.png');
         this.load.image('piece_king', 'img/piece_king.png');
         this.load.image('piece_prince', 'img/piece_prince.png');
@@ -34,25 +31,31 @@ class GameScene extends Phaser.Scene {
         this.load.image('piece_pikeman', 'img/piece_pikeman.png');
         this.load.image('piece_squire', 'img/piece_squire.png');
         this.load.image('piece_archer', 'img/piece_archer.png');
+        // Board
+        this.load.json('boardData', 'boardData.json');
+        this.load.image('grass', 'img/grass.png');
+        this.load.image('hill', 'img/hill.png');
+        this.load.image('mountain', 'img/mountain.png');
+        // Finished loading assets
+        this.load.on('complete', () => {
+            // Draw background
+            this.drawBackground();
+
+            // Start drawing UI
+            this.ui = new UI(this);
+            this.ui.create();
+
+            // Create board
+            this.board = new Board(this);
+            this.board.create();
+
+            // Game manager
+            this.gameManager = new GameManager(this, this.board, this.ui);
+            this.gameManager.create();
+        });
     }
 
     create() {
-        this.players = [new Player(this, 1), new Player(this, 2)];
-        this.gameManager = new GameManager(this, this.board, this.players, this.ui);
-
-        // Create graphics and text objects
-        this.graphics = this.add.graphics();
-        this.textObjects = [];
-
-        // Start drawing UI
-        this.ui.create();
-
-        // Draw background
-        this.drawBackground();
-
-        // Draw board
-        this.board.create();
-
         // Setup input for panning and zooming
         this.setupInput();
 
@@ -124,10 +127,12 @@ class GameScene extends Phaser.Scene {
     setupInput() {
         // Event listeners for panning (dragging)
         this.input.on('pointerdown', (pointer) => {
-            this.isDragging = true;
-            this.startX = pointer.x;
-            this.startY = pointer.y;
-            this.input.setDefaultCursor('grab'); // Change cursor to closed hand
+            if (pointer.leftButtonDown()) {
+                this.isDragging = true;
+                this.startX = pointer.x;
+                this.startY = pointer.y;
+                this.input.setDefaultCursor('grab'); // Change cursor to closed hand
+            }
         });
     
         this.input.on('pointermove', (pointer) => {

@@ -1,3 +1,5 @@
+import Player from './Player.js';
+
 class GameManager {
     playerColors = [
         { color: 'D4F8F4', name: 'lightblue' },
@@ -12,6 +14,17 @@ class GameManager {
         this.scene = scene;
         this.board = board;
         this.ui = ui;
+        this.players = [new Player(this.scene, 1), 
+                        new Player(this.scene, 2),
+                        new Player(this.scene, 3),
+                        new Player(this.scene, 4),
+                        new Player(this.scene, 5),
+                        new Player(this.scene, 6)];
+    }
+
+    create() {
+        this.board.addPiece(2, 2, 1, 1);
+        this.board.addPiece(3, 2, 1, 2);
     }
 
     update() {

@@ -4,7 +4,6 @@ class Board {
     constructor(scene) {
         this.scene = scene;
         this.boardContainer = null;
-        this.boardDate = null;
         this.tileSize = 64;
         this.pieces = [];
         this.moveCircles = [];
@@ -12,17 +11,14 @@ class Board {
         this.selectedPlayer = 1;
     }
 
-    preload() {
-        this.scene.load.setBaseURL('assets');
-        this.scene.load.json('boardData', 'boardData.json');
-        this.scene.load.image('grass', 'img/grass.png');
-        this.scene.load.image('hill', 'img/hill.png');
-        this.scene.load.image('mountain', 'img/mountain.png');
-    }
-
     create() {
-        this.boardContainer = this.scene.add.container();
         this.boardData = this.scene.cache.json.get('boardData');
+        if (!this.boardData) {
+            console.error('Board data not found in cache');
+            return;
+        }
+
+        this.boardContainer = this.scene.add.container();
         this.drawBoard();
 
         // Define the interactive area
@@ -61,30 +57,33 @@ class Board {
         // Event listener for clicks
         // Was this.boardContainer, but only worked for top-left quarter of board?
         this.scene.input.on('pointerdown', (pointer) => {
-            // Right-click deselects
+            // Left-click
+            if (pointer.leftButtonDown()) {
+                // Convert view coordinates to world coordinates
+                const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
+                
+                // Convert world coordinates to board coordinates
+                const {boardX, boardY} = this.screenToBoard(worldPoint.x, worldPoint.y);
+                
+                // Check if a piece is selected, and the clicked position contains a move circle
+                if (this.selectedPiece != null && this.isMoveCircle(boardX, boardY)) {
+                    // Move the selected piece to the clicked position
+                    this.movePiece(this.scene.board.selectedPiece, boardX, boardY);
+                    this.deselect();
+                }
+                
+                // DEBUG - piece creation on P+left click
+                if (this.pKey.isDown) {
+                    this.addPiece(boardX, boardY, this.pieceSelection, this.selectedPlayer);
+                }
+                if (this.rKey.isDown) {
+                    this.removePiece(boardX, boardY);
+                }
+            }
+            // Right-click 
             if (pointer.rightButtonDown()) {
+                // Deselect
                 this.deselect();
-            }
-
-            // Convert view coordinates to world coordinates
-            const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y);
-            
-            // Convert world coordinates to board coordinates
-            const {boardX, boardY} = this.screenToBoard(worldPoint.x, worldPoint.y);
-            
-            // Check if a piece is selected, and the clicked position contains a move circle
-            if (this.selectedPiece != null && this.isMoveCircle(boardX, boardY)) {
-                // Move the selected piece to the clicked position
-                this.movePiece(this.scene.board.selectedPiece, boardX, boardY);
-                this.deselect();
-            }
-            
-            // DEBUG - piece creation on P+left click
-            if (this.pKey.isDown) {
-                this.addPiece(boardX, boardY, this.pieceSelection);
-            }
-            if (this.rKey.isDown) {
-                this.removePiece(boardX, boardY);
             }
         });
     }
@@ -184,12 +183,18 @@ class Board {
     }
 
     // Method to add a piece at the specified board coordinates
-    addPiece(boardX, boardY, type) {
+    addPiece(boardX, boardY, type, player) {
+        // Validate type
+        if (type < 0 || type >= Piece.types.length) {
+            console.error(`Invalid piece type: ${type}`);
+            return;
+        }
         // Ensure the coordinates are within the board bounds
         if (!this.isCoordinate(boardX, boardY)) {
             console.error(`Cannot place piece - Invalid board coordinates: (${boardX}, ${boardY})`);
             return false;
         }
+        // Ensure space is empty
         if (this.getPiece(boardX, boardY)) {
             console.error(`Cannot place piece - Space is already occupied: (${boardX}, ${boardY})`);
             return false; // Space is already occupied
@@ -199,7 +204,7 @@ class Board {
         const { x, y } = this.boardToScreen(boardX, boardY);
 
         // Create and place the piece
-        const piece = new Piece(this.scene, x, y, type, this.selectedPlayer);
+        const piece = new Piece(this.scene, x, y, type, player);
         piece.pos.x = boardX;
         piece.pos.y = boardY;
         this.pieces.push(piece);

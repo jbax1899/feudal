@@ -9,11 +9,6 @@ class UI {
         this.uiContainer = null; // Container for all UI elements
     }
 
-    preload() {
-        this.scene.load.setBaseURL('assets');
-        this.scene.load.image('menubutton', 'img/menubutton.svg');
-    }
-
     create() {
         // Create UI and group elements into the container
         this.createUI();

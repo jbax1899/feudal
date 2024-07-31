@@ -27,7 +27,7 @@
         width: window.innerWidth,
         height: window.innerHeight,
         backgroundColor: '#ffffff', // Set background color to white
-        scene: [GameScene, MainMenu],
+        scene: [GameScene, MainMenu], // Debug, switch these around.
         scale: {
             mode: Phaser.Scale.ScaleModes.RESIZE,
             autoCenter: Phaser.Scale.Center.CENTER_BOTH
@@ -38,7 +38,7 @@
 
     // Prevent the default right-click context menu
     document.addEventListener('contextmenu', function (event) {
-        event.preventDefault();
+        //event.preventDefault();
     });
     </script>
 </body>
