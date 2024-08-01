@@ -9,6 +9,7 @@ class Board {
         this.moveCircles = [];
         this.selectedPiece = null;
         this.selectedPlayer = 1;
+        this.castleRotation = 0;
     }
 
     create() {
@@ -35,6 +36,7 @@ class Board {
             const key = event.key; // Get the pressed key
             const keyNumber = parseInt(key); // Convert key to a number
 
+            // DEBUG - change piece type for creation
             if (!isNaN(keyNumber)) {
                 this.selectPiece(keyNumber);
             }
@@ -52,10 +54,27 @@ class Board {
                 }
                 console.log("Selected player: " + this.selectedPlayer);
             }
+
+            // DEBUG - change castle rotation for creation
+            if (key === 'ArrowLeft') {
+                if (this.castleRotation > 0) {
+                    this.castleRotation--;
+                } else {
+                    this.castleRotation = 3;
+                }
+                console.log("Castle rotation: " + this.castleRotation);
+            }
+            if (key === 'ArrowRight') {
+                if (this.castleRotation < 3) {
+                    this.castleRotation++;
+                } else {
+                    this.castleRotation = 0;
+                }
+                console.log("Castle rotation: " + this.castleRotation);
+            }
         });
 
-        // Event listener for clicks
-        // Was this.boardContainer, but only worked for top-left quarter of board?
+        // Event listener for clicks. Was this.boardContainer, but only worked for top-left quarter of board?
         this.scene.input.on('pointerdown', (pointer) => {
             // Left-click
             if (pointer.leftButtonDown()) {
@@ -74,7 +93,7 @@ class Board {
                 
                 // DEBUG - piece creation on P+left click
                 if (this.pKey.isDown) {
-                    this.addPiece(boardX, boardY, this.pieceSelection, this.selectedPlayer);
+                    this.addPiece(boardX, boardY, this.pieceSelection, this.selectedPlayer, this.castleRotation);
                 }
                 if (this.rKey.isDown) {
                     this.removePiece(boardX, boardY);
@@ -203,7 +222,7 @@ class Board {
         // Convert board coordinates to screen coordinates
         const { x, y } = this.boardToScreen(boardX, boardY);
 
-        // Create and place the piece
+        // Create and place the main piece
         const piece = new Piece(this.scene, x, y, type, player);
         piece.pos.x = boardX;
         piece.pos.y = boardY;
@@ -211,6 +230,51 @@ class Board {
         console.log("Created " + Piece.types[piece.type] 
                     + " piece at " + boardX + "," + boardY 
                     + " for player " + this.selectedPlayer);
+
+        // If placing an outer castle piece, also place the adjacent inner castle piece based on rotation
+        if (type === Piece.types.indexOf('castle')) {
+            let outerCastleX = boardX;
+            let outerCastleY = boardY;
+            switch (this.castleRotation) {
+                case 0: // right
+                    outerCastleX += 1;
+                    break;
+                case 1: // down
+                    outerCastleY += 1;
+                    break;
+                case 2: // left
+                    outerCastleX -= 1;
+                    break;
+                case 3: // up
+                    outerCastleY -= 1;
+                    break;
+                default:
+                    console.error(`Invalid castle rotation: ${this.castleRotation}`);
+                    return false;
+            }
+
+            // Ensure the adjacent space for the outer castle is empty
+            if (!this.isCoordinate(outerCastleX, outerCastleY) || this.getPiece(outerCastleX, outerCastleY)) {
+                console.error(`Cannot place outer castle - Adjacent space is already occupied or invalid: (${outerCastleX}, ${outerCastleY})`);
+                return false; // Adjacent space is already occupied or invalid
+            }
+
+            // Convert the adjacent board coordinates to screen coordinates
+            const { x: outerCastleScreenX, y: outerCastleScreenY } = this.boardToScreen(outerCastleX, outerCastleY);
+
+            // Create and place the outer castle piece
+            const outerCastlePiece = new Piece(this.scene, outerCastleScreenX, outerCastleScreenY, Piece.types.indexOf('castle2'), player);
+            outerCastlePiece.pos.x = outerCastleX;
+            outerCastlePiece.pos.y = outerCastleY;
+            this.pieces.push(outerCastlePiece);
+            console.log("Created " + Piece.types[outerCastlePiece.type] 
+                        + " piece at " + outerCastleX + "," + outerCastleY 
+                        + " for player " + this.selectedPlayer);
+            
+            // Rotate the inner castle piece to face the outer castle piece
+            piece.rotate(this.castleRotation);
+        }
+
         return true;
     }
 

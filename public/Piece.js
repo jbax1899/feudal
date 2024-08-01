@@ -9,6 +9,8 @@ class Piece {
         'pikeman',
         'squire',
         'archer',
+        'castle',
+        'castle2'
     ];
     static moves = [
         { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // blank
@@ -19,7 +21,9 @@ class Piece {
         { orthogonalRange: 1, diagonalRange: 12, isMounted: false},     // sergeant
         { orthogonalRange: 12, diagonalRange: 1, isMounted: false},     // pikeman
         { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // squire (moves like chess kight)
-        { orthogonalRange: 3, diagonalRange: 3, isMounted: false}       // archer
+        { orthogonalRange: 3, diagonalRange: 3, isMounted: false},      // archer
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // inner castle (does not move)
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // outer castle (does not move)
     ];
 
     constructor(scene, x, y, type, player) {
@@ -31,7 +35,6 @@ class Piece {
         this.orthogonalRange = Piece.moves[type].orthogonalRange;
         this.diagonalRange = Piece.moves[type].diagonalRange;
         this.isMounted = Piece.moves[type].isMounted;
-        this.isSquire = Piece.moves[type].isSquire;
         this.playerNumber = player;
         
         // Create the piece sprite and add it to the scene
@@ -114,6 +117,41 @@ class Piece {
         
         // Set the sprite's texture to the new texture
         this.sprite.setTexture(textureKey);
+    }
+
+    rotate(rotation) {
+        // Set the origin to the center of the sprite for proper rotation
+        this.sprite.setOrigin(0.5, 0.5);
+
+        // Set the rotation angle based on the input
+        switch (rotation) {
+            case 0: // facing right
+                this.rotation = Phaser.Math.DegToRad(270);
+                break;
+            case 1: // facing down
+                this.rotation = Phaser.Math.DegToRad(0);
+                break;
+            case 2: // facing left
+                this.rotation = Phaser.Math.DegToRad(90);
+                break;
+            case 3: // facing up
+                this.rotation = Phaser.Math.DegToRad(180);
+                break;
+            default:
+                console.error(`Invalid castle rotation: ${rotation}`);
+                return; // Exit if invalid
+        }
+
+        // Apply the rotation to the sprite
+        this.sprite.setRotation(this.rotation);
+
+        // Adjust position to ensure the sprite's center is aligned with the tile
+        const tileSize = this.scene.board.tileSize; // Assuming you have a tileSize property
+        const halfWidth = tileSize / 2;
+        const halfHeight = tileSize / 2;
+
+        // Use this.pos.x and this.pos.y for the correct positioning
+        this.sprite.setPosition(this.sprite.x + halfWidth, this.sprite.y + halfHeight);
     }
 }
 
