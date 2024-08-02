@@ -228,9 +228,9 @@ class Board {
         piece.pos.x = boardX;
         piece.pos.y = boardY;
         this.pieces.push(piece);
-        console.log("Created " + Piece.types[piece.type] 
+        /*console.log("Created " + Piece.types[piece.type] 
                     + " piece at " + boardX + "," + boardY 
-                    + " for player " + this.selectedPlayer);
+                    + " for player " + this.selectedPlayer);*/
 
         // If placing an outer castle piece, also place the adjacent inner castle piece based on rotation
         if (type === Piece.types.indexOf('castle_inner')) {
@@ -270,8 +270,8 @@ class Board {
             outerCastlePiece.connectingCastle = piece; // castles can reference each other
             piece.connectingCastle = outerCastlePiece;
             this.pieces.push(outerCastlePiece);
-            console.log("Created outer castle piece at " + outerCastleX + "," + outerCastleY 
-                        + " for player " + this.selectedPlayer);
+            /*console.log("Created outer castle piece at " + outerCastleX + "," + outerCastleY 
+                        + " for player " + this.selectedPlayer);*/
             
             // Rotate the inner castle piece to face the outer castle piece
             piece.rotate(this.castleRotation);

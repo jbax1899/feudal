@@ -43,10 +43,6 @@ class GameScene extends Phaser.Scene {
             // Draw background
             this.drawBackground();
 
-            // Start drawing UI
-            this.ui = new UI(this);
-            this.ui.create();
-
             // Create board
             this.board = new Board(this);
             this.board.create();
@@ -54,6 +50,10 @@ class GameScene extends Phaser.Scene {
             // Game manager
             this.gameManager = new GameManager(this, this.board, this.ui);
             this.gameManager.create();
+
+            // Start drawing UI
+            this.ui = new UI(this);
+            this.ui.create();
         });
     }
 

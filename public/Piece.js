@@ -29,12 +29,21 @@ class Piece {
     constructor(scene, x, y, type, player) {
         this.scene = scene;
         this.pos = {x, y};
-        this.type = type !== undefined ? type : 0;
+        // Determine the type index from either a string or number
+        if (typeof type === 'string') {
+            this.type = Piece.types.indexOf(type);
+            if (this.type === -1) {
+                console.warn(`Invalid piece type: ${type}. Defaulting to 'blank'.`);
+                this.type = 0; // Default to 'blank' if type is invalid
+            }
+        } else {
+            this.type = Number.isInteger(type) && type >= 0 && type < Piece.types.length ? type : 0; // Ensure type is a valid index
+        }
         this.typeName = Piece.types[this.type];
         this.key = 'piece_' + this.typeName;
-        this.orthogonalRange = Piece.moves[type].orthogonalRange;
-        this.diagonalRange = Piece.moves[type].diagonalRange;
-        this.isMounted = Piece.moves[type].isMounted;
+        this.orthogonalRange = Piece.moves[this.type].orthogonalRange;
+        this.diagonalRange = Piece.moves[this.type].diagonalRange;
+        this.isMounted = Piece.moves[this.type].isMounted;
         this.playerNumber = player;
         this.connectingCastle = null;
         
@@ -60,7 +69,7 @@ class Piece {
             const priorSelected = this.scene.board.selectedPiece;
             // If any piece is selected, deselect it
             if (this.scene.board.selectedPiece !== null) {
-                console.log(`${Piece.types[this.scene.board.selectedPiece.type]} piece deselected (p` + priorSelected.playerNumber + ')');
+                //console.log(`${Piece.types[this.scene.board.selectedPiece.type]} piece deselected (p` + priorSelected.playerNumber + ')');
                 this.scene.board.deselect();
             }
             // Select this piece, if it wasn't already
@@ -69,7 +78,7 @@ class Piece {
                 && this.typeName !== 'castle_inner' && this.typeName !== 'castle_outer') {
                 this.scene.board.selectedPiece = this;
                 this.scene.board.showMoves(this);
-                console.log(`${Piece.types[this.type]} piece selected (p` + this.playerNumber + ')');
+                //console.log(`${Piece.types[this.type]} piece selected (p` + this.playerNumber + ')');
             }
         });
     }

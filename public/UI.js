@@ -1,3 +1,5 @@
+import Piece from './Piece.js';
+
 class UI {
     constructor(scene) {
         this.scene = scene;
@@ -7,15 +9,36 @@ class UI {
             darkteal: 0x004d4d,
         };
         this.uiContainer = null; // Container for all UI elements
+        this.pieceTray = null; // Container for the piece tray
+        this.availablePieces = {}; // Object to track available pieces
+        this.pieceIcons = {}; // Object to store piece icons
+        this.startingPieces = {
+            'king': 1,
+            'prince': 1,
+            'duke': 1,
+            'knight': 2,
+            'sergeant': 2,
+            'pikeman': 4,
+            'squire': 1,
+            'archer': 1,
+            'castle_inner': 1
+        };
+        this.playerNumber = 1; // DEBUG, assuming 1
     }
 
     create() {
         // Create UI and group elements into the container
         this.createUI();
 
+        // Add starting pieces
+        for (const [pieceType, quantity] of Object.entries(this.startingPieces)) {
+            this.addPiece(pieceType, quantity);
+        }
+
         // Handle window resize events
         this.scene.scale.on('resize', (gameSize) => {
             this.createMenuButton();
+            this.createPieceTray();
         });
 
         // Event listener for clicks anywhere on the screen
@@ -30,6 +53,140 @@ class UI {
         this.uiContainer = this.scene.add.container(0, 0);
         this.uiContainer.setDepth(1000); // Ensure the UI is above other elements
         this.createMenuButton();
+        this.createPieceTray();
+    }
+
+    addPiece(pieceType, count) {
+        if (!this.availablePieces[pieceType]) {
+            this.availablePieces[pieceType] = 0;
+        }
+        this.availablePieces[pieceType] += count;
+        this.createPieceTray(); // Update the piece tray to reflect changes
+    }
+
+    clearPieceTray() {
+        // Remove existing piece icons and quantity texts from the piece tray
+        if (this.pieceTray) {
+            this.pieceTray.list.forEach(piece => {
+                piece.destroy(); // Destroy the sprite or text
+            });
+            this.pieceTray.removeAll(true); // Remove all children from the pieceTray container
+        }
+    }      
+
+    createPieceTray() {
+        // If pieceTray already exists, clear it first
+        if (this.pieceTray) {
+            this.clearPieceTray(); // Clear existing pieces first
+            this.pieceTray.destroy(); // Destroy the previous container to prevent memory leaks
+        }
+    
+        // Create the piece tray container
+        this.pieceTray = this.scene.add.container(0, 0);
+    
+        // Get the player's color based on playerNumber
+        const playerColorHex = this.scene.gameManager.playerColors[this.playerNumber - 1].color; // Adjust for zero-indexing
+        const playerColor = Phaser.Display.Color.HexStringToColor(playerColorHex).color; // Convert to Phaser color
+    
+        // Set piece height and width
+        const pieceHeight = 100; 
+        const pieceWidth = 100; 
+        const spacing = pieceWidth / 3; // Spacing between pieces
+        const padding = pieceWidth / 5; // Padding for the background
+        const totalWidth = (pieceWidth + spacing) * Object.keys(this.startingPieces).length; // Total width of piece tray
+        const backgroundHeight = pieceHeight + 2 * padding; // Adjust height to accommodate padding
+    
+        // Calculate starting position for the piece tray
+        const startX = this.scene.cameras.main.width / 2 - (totalWidth / 2); // Center horizontally
+        const startY = this.scene.cameras.main.height - pieceHeight; // Position at the bottom
+    
+        // Create the semi-transparent background
+        const backgroundGraphics = this.scene.add.graphics();
+        const backgroundAlpha = 0.5; // Adjust this for desired transparency
+    
+        // Adjust the position of the background rectangle for the sprite's origin and padding
+        const backgroundX = startX - (pieceWidth / 2) - padding; // Offset to the left
+        const backgroundY = startY - (pieceHeight / 2) - padding; // Offset upward
+    
+        // Draw a rectangle that will serve as the background
+        backgroundGraphics.fillStyle(playerColor, backgroundAlpha); // Fill color with transparency
+        backgroundGraphics.fillRect(backgroundX, backgroundY, totalWidth + 2 * padding, backgroundHeight); // Draw the rectangle at the adjusted position
+        backgroundGraphics.setDepth(-1); // Ensure the background is behind other elements
+    
+        // Add the background graphics to the piece tray
+        this.pieceTray.add(backgroundGraphics);
+    
+        // Add pieces to the piece tray
+        Object.entries(this.startingPieces).forEach(([pieceType, quantity], index) => {
+            const x = startX + index * (pieceWidth + spacing);
+            const y = startY;
+    
+            // Create the piece sprite with the default texture
+            const pieceIcon = this.scene.add.sprite(x, y, 'piece_' + pieceType).setOrigin(0.5, 0.5);
+            pieceIcon.displayWidth = pieceWidth; // Set display size
+            pieceIcon.displayHeight = pieceHeight;
+    
+            // Create a temporary Piece instance for recoloring
+            const piece = new Piece(this.scene, 0, 0, pieceType, this.playerNumber);
+            
+            // Recolor the sprite
+            piece.recolorSprite();
+    
+            // Set the recolored texture to the icon if the texture exists
+            if (this.scene.textures.exists('recolored_piece_' + pieceType + '_' + this.playerNumber)) {
+                pieceIcon.setTexture('recolored_piece_' + pieceType + '_' + this.playerNumber);
+            } else {
+                console.warn('Recolored texture does not exist:', 'recolored_piece_' + pieceType + '_' + this.playerNumber);
+            }
+    
+            // Display the quantity above the icon
+            const quantityText = this.scene.add.text(x + pieceWidth / 2 + pieceWidth / 5, y - pieceHeight / 2, quantity, { 
+                fontSize: '32px', 
+                fill: '#000', // black
+                fontStyle: 'bold'
+            }).setOrigin(1, 0); // Align to the top-right corner
+
+            // Add to piece tray container
+            this.pieceTray.add([pieceIcon, quantityText]); // Store both in piece tray
+
+            // Clean up the non-UI piece instance
+            piece.sprite.destroy(); // Destroy the temporary piece instance
+        });
+    
+        // Add pieceTray to the UI container
+        this.uiContainer.add(this.pieceTray);
+    }    
+    
+    populatePieceTray(trayX, trayY, trayWidth, trayHeight) {
+        const pieceSize = trayHeight * 0.8; // Size of each piece icon
+        const padding = pieceSize * 0.2; // Padding between piece icons
+        const startX = trayX + padding; // Starting X position
+        const startY = trayY + (trayHeight - pieceSize) / 2; // Centered vertically
+
+        let x = startX;
+        let y = startY;
+
+        for (const [pieceType, count] of Object.entries(this.availablePieces)) {
+            // Create a piece icon
+            const pieceIcon = this.scene.add.sprite(x, y, 'piece_' + pieceType)
+                .setDisplaySize(pieceSize, pieceSize)
+                .setInteractive({ draggable: true });
+            
+            // Store the piece icon for future reference
+            this.pieceIcons[pieceType] = pieceIcon;
+
+            // Display the count of available pieces
+            const countText = this.scene.add.text(x - pieceSize / 2, y - pieceSize / 2, count, {
+                fontSize: `${pieceSize * 0.4}px`,
+                fill: '#fff'
+            }).setOrigin(0, 0);
+
+            // Add piece icon and count text to the tray
+            this.pieceTray.add([pieceIcon, countText]);
+
+            // Update the position for the next piece
+            x += pieceSize + padding;
+        }
     }
 
     updateUIPosition() {
