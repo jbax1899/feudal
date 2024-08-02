@@ -24,9 +24,13 @@ class GameManager {
 
     create() {
         // Debug board start state
+        this.board.addPiece(2, 0, 8, 1);
+        this.board.addPiece(2, 1, 7, 1);
         this.board.addPiece(2, 2, 1, 1);
         this.board.addPiece(2, 3, 9, 1);
 
+        this.board.addPiece(4, 0, 8, 2);
+        this.board.addPiece(4, 1, 7, 2);
         this.board.addPiece(4, 2, 1, 2);
         this.board.addPiece(4, 3, 9, 2);
     }

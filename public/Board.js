@@ -374,13 +374,18 @@ class Board {
         // Handle castle movement rules
         if (targetCastle) {
             if (targetCastle.typeName === 'castle_inner') {
+                // Special rule for archers: cannot move onto their own inner castle
+                if (piece.typeName === 'archer' && targetCastle.playerNumber === piece.playerNumber) {
+                    return 0; // Archers cannot move onto their own inner castle
+                }
+
                 // Moving onto an inner castle is allowed only from its connecting castle
                 if (piece.pos.x === targetCastle.connectingCastle.pos.x && piece.pos.y === targetCastle.connectingCastle.pos.y) {
-                    return 2; // Capture logic for moving to own castle
+                    return 3; // Special move logic for moving to own castle
                 }
                 return 0; // Invalid move
             } else if (targetCastle.typeName === 'castle_outer') {
-                return 2; // Can move onto outer castle
+                return 3; // Special move onto outer castle
             }
         }
     
@@ -395,7 +400,7 @@ class Board {
         }
     
         return 1; // All checks passed, move is legal
-    }
+    }    
 
     drawMoveCircle(boardX, boardY, enemy) {
         const x = boardX * this.tileSize + this.tileSize / 2;
@@ -438,7 +443,7 @@ class Board {
     showMoves(piece) {
         const { orthogonalRange, diagonalRange, typeName } = piece;
         const { boardX, boardY } = this.screenToBoard(piece.sprite.x, piece.sprite.y);
-    
+
         const drawDirectionalMoves = (dx, dy, range) => {
             for (let i = 1; i <= range; i++) {
                 const newX = boardX + i * dx;
@@ -449,12 +454,15 @@ class Board {
                 } else if (moveType === 2) {
                     this.drawMoveCircle(newX, newY, true); // Enemy move
                     break;
+                } else if (moveType === 3) {
+                    this.drawMoveCircle(newX, newY, false); // Special move
+                    break;
                 } else {
                     break; // Illegal move
                 }
             }
         };
-    
+
         if (typeName === 'squire') {
             const knightMoves = [
                 { dx: 1, dy: 2 }, { dx: 1, dy: -2 }, { dx: -1, dy: 2 }, { dx: -1, dy: -2 },
@@ -468,6 +476,8 @@ class Board {
                     this.drawMoveCircle(newX, newY, false); // Normal move
                 } else if (moveType === 2) {
                     this.drawMoveCircle(newX, newY, true); // Enemy move
+                } else if (moveType === 3) {
+                    this.drawMoveCircle(newX, newY, false); // Special move
                 }
             });
         } else {
@@ -476,7 +486,7 @@ class Board {
             drawDirectionalMoves(0, -1, orthogonalRange); // Down
             drawDirectionalMoves(1, 0, orthogonalRange);  // Right
             drawDirectionalMoves(-1, 0, orthogonalRange); // Left
-    
+
             // Diagonal moves
             drawDirectionalMoves(1, 1, diagonalRange);    // Bottom-right
             drawDirectionalMoves(1, -1, diagonalRange);   // Top-right
