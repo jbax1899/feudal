@@ -129,11 +129,23 @@ class GameScene extends Phaser.Scene {
     setupInput() {
         // Event listeners for panning (dragging)
         this.input.on('pointerdown', (pointer) => {
-            if (pointer.leftButtonDown()) {
-                this.isDragging = true;
-                this.startX = pointer.x;
-                this.startY = pointer.y;
-                this.input.setDefaultCursor('grab'); // Change cursor to closed hand
+            // Convert pointer position to world coordinates
+            const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+
+            // Check if the pointer is within the pieceTray
+            const isPointerOnPieceTray = this.ui.pieceTray.getBounds().contains(worldPoint.x, worldPoint.y);
+
+            // Check if the pointer is within the board's container
+            const isPointerOnBoard = this.board.boardContainer.getBounds().contains(worldPoint.x, worldPoint.y);
+
+            // Allow dragging only if it's not on the pieceTray
+            if (pointer.leftButtonDown() && !isPointerOnPieceTray) {
+                if (isPointerOnBoard) {
+                    this.isDragging = true;
+                    this.startX = pointer.x;
+                    this.startY = pointer.y;
+                    this.input.setDefaultCursor('grab'); // Change cursor to closed hand
+                }
             }
         });
     

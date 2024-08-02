@@ -10,6 +10,7 @@ class Board {
         this.selectedPiece = null;
         this.selectedPlayer = 1;
         this.castleRotation = 0;
+        this.debug = false;
     }
 
     create() {
@@ -155,6 +156,14 @@ class Board {
 
         // Set depth of board container
         this.boardContainer.setDepth(-1);
+
+        if (this.debug) {
+            const graphics = this.scene.add.graphics();
+            graphics.lineStyle(2, 0xff0000); // Set border color (red) and thickness
+            const bounds = this.boardContainer.getBounds();
+            graphics.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
+            graphics.setDepth(1000); // Ensure it's above other elements
+        }
     }
 
     // Method to convert screen coordinates to board coordinates
@@ -206,17 +215,27 @@ class Board {
     addPiece(boardX, boardY, type, player) {
         // Validate type
         if (type < 0 || type >= Piece.types.length) {
-            console.error(`Invalid piece type: ${type}`);
+            console.warn(`Invalid piece type: ${type}`);
             return;
         }
         // Ensure the coordinates are within the board bounds
         if (!this.isCoordinate(boardX, boardY)) {
-            console.error(`Cannot place piece - Invalid board coordinates: (${boardX}, ${boardY})`);
+            console.warn(`Cannot place piece - Invalid board coordinates: (${boardX}, ${boardY})`);
             return false;
         }
+        // Cannot place any piece on a mountain
+        if (this.getTile(boardX, boardY) === 3) {
+             console.warn(`Cannot place piece on mountain: (${boardX}, ${boardY})`);
+             return false;
+        }
+        // Cannot place mounted units on rough
+        if (this.getTile(boardX, boardY) === 2 && Piece.moves[Piece.types.indexOf(type)].isMounted) {
+            console.warn(`Cannot place piece on mountain: (${boardX}, ${boardY})`);
+            return false;
+       }
         // Ensure space is empty
         if (this.getPieces(boardX, boardY)) {
-            console.error(`Cannot place piece - Space is already occupied: (${boardX}, ${boardY})`);
+            console.warn(`Cannot place piece - Space is already occupied: (${boardX}, ${boardY})`);
             return false; // Space is already occupied
         }
 

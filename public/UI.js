@@ -35,6 +35,9 @@ class UI {
             this.addPiece(pieceType, quantity);
         }
 
+        // Set up drag-and-drop functionality
+        this.setupDragAndDrop();
+
         // Handle window resize events
         this.scene.scale.on('resize', (gameSize) => {
             this.createMenuButton();
@@ -117,12 +120,14 @@ class UI {
         this.pieceTray.add(backgroundGraphics);
     
         // Add pieces to the piece tray
-        Object.entries(this.startingPieces).forEach(([pieceType, quantity], index) => {
+        Object.entries(this.availablePieces).forEach(([pieceType, quantity], index) => {
             const x = startX + index * (pieceWidth + spacing);
             const y = startY;
     
             // Create the piece sprite with the default texture
-            const pieceIcon = this.scene.add.sprite(x, y, 'piece_' + pieceType).setOrigin(0.5, 0.5);
+            const pieceIcon = this.scene.add.sprite(x, y, 'piece_' + pieceType)
+                .setOrigin(0.5, 0.5)
+                .setInteractive({ draggable: true }); // Make the piece icon draggable
             pieceIcon.displayWidth = pieceWidth; // Set display size
             pieceIcon.displayHeight = pieceHeight;
     
@@ -145,10 +150,17 @@ class UI {
                 fill: '#000', // black
                 fontStyle: 'bold'
             }).setOrigin(1, 0); // Align to the top-right corner
-
+    
+            // Set the opacity based on the quantity of pieces available
+            if (quantity === 0) {
+                pieceIcon.setAlpha(0.5); // Set low opacity if no pieces are available
+            } else {
+                pieceIcon.setAlpha(1); // Set full opacity if pieces are available
+            }
+    
             // Add to piece tray container
             this.pieceTray.add([pieceIcon, quantityText]); // Store both in piece tray
-
+    
             // Clean up the non-UI piece instance
             piece.sprite.destroy(); // Destroy the temporary piece instance
         });
@@ -188,6 +200,71 @@ class UI {
             x += pieceSize + padding;
         }
     }
+
+    setupDragAndDrop() {
+        let draggedPiece;
+        let originalPiece; // Variable to hold the reference to the original tray piece
+        
+        // Drag start event
+        this.scene.input.on('dragstart', (pointer, gameObject) => {
+            const pieceType = gameObject.texture.key.split('_')[2]; // Get piece type from texture key
+    
+            // Check if there are available pieces
+            if (this.availablePieces[pieceType] > 0) {
+                originalPiece = gameObject; // Store a reference to the original piece
+                originalPiece.setAlpha(0.5); // Make the original piece semi-transparent
+            
+                // Create a copy of the piece for dragging
+                draggedPiece = this.scene.add.sprite(pointer.x, pointer.y, originalPiece.texture.key)
+                    .setOrigin(0.5, 0.5)
+                    .setScale(0.25)
+                    .setDepth(1000);
+            } else {
+                //console.warn(`No available pieces of type '${pieceType}' to drag.`);
+            }
+        });
+        
+        this.scene.input.on('drag', (pointer) => {
+            if (draggedPiece) {
+                // Get the global position of the pointer
+                const globalPointer = pointer.positionToCamera(this.scene.cameras.main);
+        
+                // Update the position of the dragged piece
+                draggedPiece.setPosition(globalPointer.x, globalPointer.y);
+            }
+        });        
+        
+        // Drag end event
+        this.scene.input.on('dragend', (pointer) => {
+            if (draggedPiece) {
+                const pieceType = draggedPiece.texture.key.split('_')[2]; // Get piece type from texture key
+                const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y); // Get world coordinates
+                
+                // Check if the piece is dropped on the board
+                if (this.scene.board.boardContainer.getBounds().contains(worldPoint.x, worldPoint.y)) {
+                    // Convert screen coordinates to board coordinates
+                    const { boardX, boardY } = this.scene.board.screenToBoard(worldPoint.x, worldPoint.y);
+                    const success = this.scene.board.addPiece(boardX, boardY, pieceType, this.playerNumber); // Use the pieceType instead
+                    if (success) {
+                        // Decrement available pieces on successful placement
+                        if (this.availablePieces[pieceType] !== undefined) {
+                            this.availablePieces[pieceType] -= 1;
+                            this.createPieceTray();
+                        } else {
+                            console.warn(`Piece type '${pieceType}' is not defined in availablePieces.`);
+                        }                        
+                    } else {
+                        originalPiece.setAlpha(1); 
+                        //console.warn('Failed to add piece at:', boardX, boardY);
+                    }
+                }
+
+                // Remove the dragged piece
+                draggedPiece.destroy();
+                draggedPiece = null; // Clear the reference
+            }
+        });
+    }    
 
     updateUIPosition() {
         if (this.uiContainer) {
