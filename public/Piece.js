@@ -9,8 +9,8 @@ class Piece {
         'pikeman',
         'squire',
         'archer',
-        'castle',
-        'castle2'
+        'castle_inner',
+        'castle_outer'
     ];
     static moves = [
         { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // blank
@@ -36,6 +36,7 @@ class Piece {
         this.diagonalRange = Piece.moves[type].diagonalRange;
         this.isMounted = Piece.moves[type].isMounted;
         this.playerNumber = player;
+        this.connectingCastle = null;
         
         // Create the piece sprite and add it to the scene
         this.sprite = this.scene.add.sprite(x, y, this.key)
@@ -45,6 +46,14 @@ class Piece {
         // Recolor the sprite based on the player number
         this.recolorSprite();
 
+        // Set depth
+        // Castle must appear below other pieces
+        if (this.typeName === 'castle_inner' || this.typeName === 'castle_outer') {
+            this.sprite.setDepth(0)
+        } else {
+            this.sprite.setDepth(1)
+        }
+        
         // Make the piece sprite interactive
         this.sprite.setInteractive();
         this.sprite.on('pointerdown', () => {
@@ -55,7 +64,9 @@ class Piece {
                 this.scene.board.deselect();
             }
             // Select this piece, if it wasn't already
-            if (priorSelected !== this) {
+            // Cannot select castle pieces
+            if (priorSelected !== this 
+                && this.typeName !== 'castle_inner' && this.typeName !== 'castle_outer') {
                 this.scene.board.selectedPiece = this;
                 this.scene.board.showMoves(this);
                 console.log(`${Piece.types[this.type]} piece selected (p` + this.playerNumber + ')');

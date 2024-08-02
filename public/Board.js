@@ -196,9 +196,10 @@ class Board {
         console.log(`Piece selection changed to: ${Piece.types[number]} (${number})`);
     }
 
-    // Method to get the piece at the specified board coordinates
-    getPiece(boardX, boardY) {
-        return this.pieces.find(piece => piece.pos.x === boardX && piece.pos.y === boardY) || null;
+    // Method to get the piece(s) at the specified board coordinates (2, if a piece is on a castle)
+    getPieces(boardX, boardY) {
+        const pieces = this.pieces.filter(piece => piece.pos.x === boardX && piece.pos.y === boardY);
+        return pieces.length > 0 ? pieces : null;
     }
 
     // Method to add a piece at the specified board coordinates
@@ -214,7 +215,7 @@ class Board {
             return false;
         }
         // Ensure space is empty
-        if (this.getPiece(boardX, boardY)) {
+        if (this.getPieces(boardX, boardY)) {
             console.error(`Cannot place piece - Space is already occupied: (${boardX}, ${boardY})`);
             return false; // Space is already occupied
         }
@@ -232,7 +233,7 @@ class Board {
                     + " for player " + this.selectedPlayer);
 
         // If placing an outer castle piece, also place the adjacent inner castle piece based on rotation
-        if (type === Piece.types.indexOf('castle')) {
+        if (type === Piece.types.indexOf('castle_inner')) {
             let outerCastleX = boardX;
             let outerCastleY = boardY;
             switch (this.castleRotation) {
@@ -254,7 +255,7 @@ class Board {
             }
 
             // Ensure the adjacent space for the outer castle is empty
-            if (!this.isCoordinate(outerCastleX, outerCastleY) || this.getPiece(outerCastleX, outerCastleY)) {
+            if (!this.isCoordinate(outerCastleX, outerCastleY) || this.getPieces(outerCastleX, outerCastleY)) {
                 console.error(`Cannot place outer castle - Adjacent space is already occupied or invalid: (${outerCastleX}, ${outerCastleY})`);
                 return false; // Adjacent space is already occupied or invalid
             }
@@ -263,12 +264,13 @@ class Board {
             const { x: outerCastleScreenX, y: outerCastleScreenY } = this.boardToScreen(outerCastleX, outerCastleY);
 
             // Create and place the outer castle piece
-            const outerCastlePiece = new Piece(this.scene, outerCastleScreenX, outerCastleScreenY, Piece.types.indexOf('castle2'), player);
+            const outerCastlePiece = new Piece(this.scene, outerCastleScreenX, outerCastleScreenY, Piece.types.indexOf('castle_outer'), player);
             outerCastlePiece.pos.x = outerCastleX;
             outerCastlePiece.pos.y = outerCastleY;
+            outerCastlePiece.connectingCastle = piece; // castles can reference each other
+            piece.connectingCastle = outerCastlePiece;
             this.pieces.push(outerCastlePiece);
-            console.log("Created " + Piece.types[outerCastlePiece.type] 
-                        + " piece at " + outerCastleX + "," + outerCastleY 
+            console.log("Created outer castle piece at " + outerCastleX + "," + outerCastleY 
                         + " for player " + this.selectedPlayer);
             
             // Rotate the inner castle piece to face the outer castle piece
@@ -278,19 +280,38 @@ class Board {
         return true;
     }
 
-    // Method to remove a piece from the specified board coordinates
+    // Method to remove a piece from the specified board coordinates (ignoring castles)
     removePiece(boardX, boardY) {
-        const pieceIndex = this.pieces.findIndex(piece => piece.pos.x === boardX && piece.pos.y === boardY);
-        if (pieceIndex === -1) {
-            console.error(`No piece found at (${boardX}, ${boardY})`);
-            return false; // No piece found at the specified location
+        const pieces = this.getPieces(boardX, boardY);
+        let pieceToRemove = null;
+    
+        if (pieces) {
+            for (const piece of pieces) {
+                // Find the non-castle piece to remove
+                if (piece.typeName !== 'castle_inner' && piece.typeName !== 'castle_outer') {
+                    pieceToRemove = piece;
+                    break;
+                }
+            }
         }
-
-        // Remove the piece sprite and remove it from the array
-        this.pieces[pieceIndex].sprite.destroy();
-        this.pieces.splice(pieceIndex, 1);
-        //console.log(`Removed piece from (${boardX}, ${boardY})`);
-        return true; // Successfully removed the piece
+    
+        if (!pieceToRemove) {
+            //console.error(`No enemy piece found at (${boardX}, ${boardY})`);
+            return false;
+        }
+    
+        // Ensure we are removing the correct piece
+        const pieceIndex = this.pieces.indexOf(pieceToRemove);
+        if (pieceIndex !== -1) {
+            // Remove the piece sprite and remove it from the array
+            this.pieces[pieceIndex].sprite.destroy();
+            this.pieces.splice(pieceIndex, 1);
+            // console.log(`Removed piece from (${boardX}, ${boardY})`);
+            return true;
+        } else {
+            console.error(`Piece not found in the pieces array.`);
+            return false;
+        }
     }
 
     isLegalMove(boardX, boardY, piece) {
@@ -299,27 +320,81 @@ class Board {
             return 0;
         }
     
-        const otherPiece = this.getPiece(boardX, boardY);
-        // Check if the space is occupied by another piece by the same player
-        if (otherPiece && otherPiece.playerNumber == piece.playerNumber) {
+        // Identify the castle piece we're on (if any)
+        let castleAtPiece = null;
+        const currentPieces = this.getPieces(piece.pos.x, piece.pos.y);
+        for (const p of currentPieces) {
+            if (p.typeName === 'castle_inner' || p.typeName === 'castle_outer') {
+                castleAtPiece = p;
+                break; // Found the castle, exit loop early
+            }
+        }
+    
+        // Check rules for moving from an inner castle
+        if (castleAtPiece?.typeName === 'castle_inner') {
+            const { connectingCastle } = castleAtPiece;
+            if (boardX !== connectingCastle.pos.x || boardY !== connectingCastle.pos.y) {
+                return 0; // Must move to the connecting castle
+            }
+        }
+    
+        // Identify other pieces at the target location
+        const otherPieces = this.getPieces(boardX, boardY);
+        let enemyPiece = null;
+        let targetCastle = null;
+    
+        if (otherPieces) {
+            for (const p of otherPieces) {
+                if (p.typeName === 'castle_inner' || p.typeName === 'castle_outer') {
+                    targetCastle = p;
+                } else {
+                    enemyPiece = p; // Capture the enemy piece
+                }
+            }
+        }
+    
+        // Handle checks for the enemy piece
+        if (enemyPiece) {
+            // Cannot capture own piece
+            if (enemyPiece.playerNumber === piece.playerNumber) {
+                return 0;
+            }
+    
+            // Check if enemy piece is on an inner castle
+            if (targetCastle?.typeName === 'castle_inner') {
+                const { connectingCastle } = targetCastle;
+                if (piece.pos.x !== connectingCastle.pos.x || piece.pos.y !== connectingCastle.pos.y) {
+                    return 0; // Can't capture unless on the connecting castle
+                }
+            }
+    
+            return 2; // Can capture the enemy piece
+        }
+    
+        // Handle castle movement rules
+        if (targetCastle) {
+            if (targetCastle.typeName === 'castle_inner') {
+                // Moving onto an inner castle is allowed only from its connecting castle
+                if (piece.pos.x === targetCastle.connectingCastle.pos.x && piece.pos.y === targetCastle.connectingCastle.pos.y) {
+                    return 2; // Capture logic for moving to own castle
+                }
+                return 0; // Invalid move
+            } else if (targetCastle.typeName === 'castle_outer') {
+                return 2; // Can move onto outer castle
+            }
+        }
+    
+        // Check if the tile is impassable (mountain)
+        if (this.getTile(boardX, boardY) === 3) {
             return 0;
         }
-        // Check if the space is occupied by an enemy player's piece
-        if (otherPiece && otherPiece.playerNumber.playerNumber != piece.playerNumber) {
-            return 2;
+    
+        // Check if mounted piece is moving onto rough terrain
+        if (piece.isMounted && this.getTile(boardX, boardY) === 2) {
+            return false; // Invalid move
         }
-
-        // Check if the space is a mountain (impassible)
-        if (this.getTile(boardX, boardY) == 3) {
-            return 0;
-        }
-
-        // Check if the piece is mounted and if the tile is rough terrain
-        if (piece.isMounted && this.getTile(boardX, boardY) == 2) {
-            return false;
-        }
-
-        return 1; // All checks passed, is a legal move
+    
+        return 1; // All checks passed, move is legal
     }
 
     drawMoveCircle(boardX, boardY, enemy) {
@@ -333,6 +408,7 @@ class Board {
             graphics.lineStyle(thickness, 0xff0000, 1); // Red color, 3 pixels thick, full opacity
             graphics.strokeCircle(x, y, (this.tileSize / 2) - thickness);
             graphics.setInteractive(new Phaser.Geom.Circle(x, y, (this.tileSize / 2) - thickness), Phaser.Geom.Circle.Contains);
+            graphics.setDepth(10);
             graphics.on('pointerdown', () => {
                 this.capturePiece(this.selectedPiece, boardX, boardY);
             });
@@ -343,6 +419,7 @@ class Board {
             // Draw small move circle
             const circle = this.scene.add.circle(x, y, this.tileSize / 7, 0x00ff00, 0.5); // Green circle with 50% alpha
             circle.setInteractive();
+            circle.setDepth(10);
             circle.on('pointerdown', () => {
                 this.movePiece(this.selectedPiece, boardX, boardY);
             });
@@ -429,10 +506,7 @@ class Board {
     }
 
     capturePiece(piece, boardX, boardY) {
-        const enemyPiece = this.getPiece(boardX, boardY);
-        if (enemyPiece) {
-            this.removePiece(boardX, boardY); // Remove the enemy piece
-        }
+        this.removePiece(boardX, boardY);
         this.movePiece(piece, boardX, boardY);
     }
 }
