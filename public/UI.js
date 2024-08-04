@@ -72,15 +72,16 @@ class UI {
     }
 
     createPieceTray() {
+        const camera = this.scene.cameras.main;
         const pieceHeight = 100; 
         const pieceWidth = 100; 
         const spacing = pieceWidth / 3;
         const padding = pieceWidth / 5;
         const trayHeight = Math.round(pieceHeight + 2 * padding);
-        const maxTrayWidth = Math.round(this.scene.cameras.main.width * 0.75);
+        const maxTrayWidth = Math.round(camera.width * 0.75);
         const adjustedWidth = Math.min((pieceWidth + spacing) * Object.keys(this.startingPieces).length, maxTrayWidth);
-        const startX = Math.round((this.scene.cameras.main.width / 2) - (adjustedWidth / 2) + padding); // Center horizontally
-        const startY = Math.round(this.scene.cameras.main.height - pieceHeight - (padding * 2)); // Position at the bottom
+        const startX = Math.round((camera.width / 2) - (adjustedWidth / 2)); // Center horizontally
+        const startY = Math.round(camera.height - pieceHeight - (padding * 3)); // Position at the bottom
 
         // Piece tray
         if (this.pieceTray) {
@@ -92,33 +93,34 @@ class UI {
                         .setInteractive(new Phaser.Geom.Rectangle(0, 0, adjustedWidth, pieceHeight), Phaser.Geom.Rectangle.Contains);
         this.uiContainer.add(this.pieceTray);
     
-        // Hide overflow with mask
-        /*
-        if (this.mask)
-            this.mask.destroy();
-        this.mask = this.scene.add.graphics()
-                    .fillStyle(0xFF0000, 0.5) // Red color with 50% opacity for debugging
-                    .fillRect(0, 0, adjustedWidth, trayHeight)
-                    .setVisible(true)
-                    .setPosition(startX, startY); // Align mask with pieceTray
-        this.uiContainer.add(this.mask);
-        this.pieceTray.setMask(this.mask.createGeometryMask());
-        */
-    
         // Draw a semi-transparent rectangle for tray background with the player's color
         const playerColorHex = this.scene.gameManager.playerColors[this.playerNumber - 1].color;
         const playerColor = Phaser.Display.Color.HexStringToColor(playerColorHex).color;
         const backgroundGraphics = this.scene.add.graphics();
         backgroundGraphics.fillStyle(playerColor, 0.5)
-                          .fillRect(-padding, -padding, adjustedWidth, trayHeight)
+                          .fillRect(0, 0, adjustedWidth, trayHeight)
                           .setDepth(-1)
                           .setInteractive(new Phaser.Geom.Rectangle(-padding, -padding, adjustedWidth, trayHeight), Phaser.Geom.Rectangle.Contains); // Set as interactive so we can't click through it
         this.pieceTray.add(backgroundGraphics);
-    
+
+        // Hide overflow with mask
+        if (this.mask) {
+            this.mask.destroy();
+        }
+        const maskWidth = Math.round(adjustedWidth / camera.zoom);
+        const maskHeight = Math.round(trayHeight / camera.zoom);
+        const globalPos = this.cameraToGlobal(startX, startY);
+        this.mask = this.scene.add.graphics()
+                    //.fillStyle(0xFF0000, 0.5) // Red color with 50% opacity for debugging
+                    .fillRect(0, 0, maskWidth, maskHeight)
+                    .setVisible(true)
+                    .setPosition(globalPos.x, globalPos.y);
+        this.pieceTray.setMask(this.mask.createGeometryMask());
+
         // Add pieces to the piece tray
         Object.entries(this.availablePieces).forEach(([pieceType, quantity], index) => {
-            const x = (pieceWidth / 2) + index * (pieceWidth + spacing) + this.trayScrollOffset;
-            const y = (pieceHeight / 2);
+            const x = (pieceWidth / 2) + index * (pieceWidth + spacing) + this.trayScrollOffset + padding;
+            const y = (pieceHeight / 2) + padding;
     
             // Create the piece sprite with the default texture
             const pieceIcon = this.scene.add.sprite(x, y, 'piece_' + pieceType)
@@ -148,38 +150,6 @@ class UI {
             this.pieceTray.add([pieceIcon, quantityText]); 
             piece.sprite.destroy(); 
         });
-    }
-    
-    populatePieceTray(trayX, trayY, trayWidth, trayHeight) {
-        const pieceSize = trayHeight * 0.8; // Size of each piece icon
-        const padding = pieceSize * 0.2; // Padding between piece icons
-        const startX = trayX + padding; // Starting X position
-        const startY = trayY + (trayHeight - pieceSize) / 2; // Centered vertically
-
-        let x = startX;
-        let y = startY;
-
-        for (const [pieceType, count] of Object.entries(this.availablePieces)) {
-            // Create a piece icon
-            const pieceIcon = this.scene.add.sprite(x, y, 'piece_' + pieceType)
-                .setDisplaySize(pieceSize, pieceSize)
-                .setInteractive({ draggable: true });
-            
-            // Store the piece icon for future reference
-            this.pieceIcons[pieceType] = pieceIcon;
-
-            // Display the count of available pieces
-            const countText = this.scene.add.text(x - pieceSize / 2, y - pieceSize / 2, count, {
-                fontSize: `${pieceSize * 0.4}px`,
-                fill: '#fff'
-            }).setOrigin(0, 0);
-
-            // Add piece icon and count text to the tray
-            this.pieceTray.add([pieceIcon, countText]);
-
-            // Update the position for the next piece
-            x += pieceSize + padding;
-        }
     }
 
     setupDragAndDrop() {
@@ -263,24 +233,26 @@ class UI {
         });
     }    
 
+    cameraToGlobal(viewX, viewY) {
+        // Calculate global coordinates considering zoom and scroll
+        const camera = this.scene.cameras.main;
+        const globalX = (viewX - camera.width / 2) / camera.zoom + camera.scrollX + camera.width / 2;
+        const globalY = (viewY - camera.height / 2) / camera.zoom + camera.scrollY + camera.height / 2;
+    
+        return { x: globalX, y: globalY };
+    }
+
     updateUIPosition() {
         if (this.uiContainer) {
-            const camera = this.scene.cameras.main;
+            // Get the top-left corner of the viewport in world coordinates using cameraToGlobal
+            const topLeft = this.cameraToGlobal(0, 0);
     
-            // Calculate the top-left corner of the viewport in world coordinates
-            const viewportTopLeftX = camera.scrollX;
-            const viewportTopLeftY = camera.scrollY;
-    
-            // Calculate the offset based on the zoom level
-            const offsetX = (camera.width / 2) * (1 - 1 / camera.zoom);
-            const offsetY = (camera.height / 2) * (1 - 1 / camera.zoom);
-    
-            // Set the UI container's position to match the viewport's top-left corner, adjusted by the offset
-            this.uiContainer.setPosition(viewportTopLeftX + offsetX, viewportTopLeftY + offsetY);
+            // Set the UI container's position to match the viewport's top-left corner
+            this.uiContainer.setPosition(topLeft.x, topLeft.y);
     
             // Adjust scale to counteract the zoom effect
-            this.uiContainer.setScale(1 / camera.zoom);
-
+            this.uiContainer.setScale(1 / this.scene.cameras.main.zoom);
+    
             // Re-draw piece tray
             this.createPieceTray();
         }
