@@ -24,6 +24,7 @@ class UI {
             'castle_inner': 1
         };
         this.playerNumber = 1; // DEBUG, assuming 1
+        this.trayScrollOffset = 0;
     }
 
     create() {
@@ -34,14 +35,18 @@ class UI {
         for (const [pieceType, quantity] of Object.entries(this.startingPieces)) {
             this.addPiece(pieceType, quantity);
         }
+        this.createPieceTray(); // Update the piece tray to reflect changes
 
         // Set up drag-and-drop functionality
         this.setupDragAndDrop();
 
+        // Add mouse wheel scrolling for the piece tray
+        this.addMouseWheelScrolling();
+
         // Handle window resize events
         this.scene.scale.on('resize', (gameSize) => {
             this.createMenuButton();
-            this.createPieceTray();
+            //this.createPieceTray();
         });
 
         // Event listener for clicks anywhere on the screen
@@ -56,7 +61,7 @@ class UI {
         this.uiContainer = this.scene.add.container(0, 0);
         this.uiContainer.setDepth(1000); // Ensure the UI is above other elements
         this.createMenuButton();
-        this.createPieceTray();
+        //this.createPieceTray();
     }
 
     addPiece(pieceType, count) {
@@ -64,110 +69,86 @@ class UI {
             this.availablePieces[pieceType] = 0;
         }
         this.availablePieces[pieceType] += count;
-        this.createPieceTray(); // Update the piece tray to reflect changes
     }
 
-    clearPieceTray() {
-        // Remove existing piece icons and quantity texts from the piece tray
-        if (this.pieceTray) {
-            this.pieceTray.list.forEach(piece => {
-                piece.destroy(); // Destroy the sprite or text
-            });
-            this.pieceTray.removeAll(true); // Remove all children from the pieceTray container
-        }
-    }      
-
     createPieceTray() {
-        // If pieceTray already exists, clear it first
-        if (this.pieceTray) {
-            this.clearPieceTray(); // Clear existing pieces first
-            this.pieceTray.destroy(); // Destroy the previous container to prevent memory leaks
-        }
-    
-        // Create the piece tray container
-        this.pieceTray = this.scene.add.container(0, 0);
-    
-        // Get the player's color based on playerNumber
-        const playerColorHex = this.scene.gameManager.playerColors[this.playerNumber - 1].color; // Adjust for zero-indexing
-        const playerColor = Phaser.Display.Color.HexStringToColor(playerColorHex).color; // Convert to Phaser color
-    
-        // Set piece height and width
         const pieceHeight = 100; 
         const pieceWidth = 100; 
-        const spacing = pieceWidth / 3; // Spacing between pieces
-        const padding = pieceWidth / 5; // Padding for the background
-        const totalWidth = (pieceWidth + spacing) * Object.keys(this.startingPieces).length; // Total width of piece tray
-        const backgroundHeight = pieceHeight + 2 * padding; // Adjust height to accommodate padding
+        const spacing = pieceWidth / 3;
+        const padding = pieceWidth / 5;
+        const trayHeight = Math.round(pieceHeight + 2 * padding);
+        const maxTrayWidth = Math.round(this.scene.cameras.main.width * 0.75);
+        const adjustedWidth = Math.min((pieceWidth + spacing) * Object.keys(this.startingPieces).length, maxTrayWidth);
+        const startX = Math.round((this.scene.cameras.main.width / 2) - (adjustedWidth / 2) + padding); // Center horizontally
+        const startY = Math.round(this.scene.cameras.main.height - pieceHeight - (padding * 2)); // Position at the bottom
+
+        // Piece tray
+        if (this.pieceTray) {
+            this.pieceTray.list.forEach(piece => {piece.destroy(); }); // Destroy the sprites and text
+            this.pieceTray.removeAll(true).destroy(); // Remove all children from the pieceTray container
+        }
+        this.pieceTray = this.scene.add.container(startX, startY)
+                        .setSize(adjustedWidth, trayHeight)
+                        .setInteractive(new Phaser.Geom.Rectangle(0, 0, adjustedWidth, pieceHeight), Phaser.Geom.Rectangle.Contains);
+        this.uiContainer.add(this.pieceTray);
     
-        // Calculate starting position for the piece tray
-        const startX = this.scene.cameras.main.width / 2 - (totalWidth / 2); // Center horizontally
-        const startY = this.scene.cameras.main.height - pieceHeight; // Position at the bottom
+        // Hide overflow with mask
+        /*
+        if (this.mask)
+            this.mask.destroy();
+        this.mask = this.scene.add.graphics()
+                    .fillStyle(0xFF0000, 0.5) // Red color with 50% opacity for debugging
+                    .fillRect(0, 0, adjustedWidth, trayHeight)
+                    .setVisible(true)
+                    .setPosition(startX, startY); // Align mask with pieceTray
+        this.uiContainer.add(this.mask);
+        this.pieceTray.setMask(this.mask.createGeometryMask());
+        */
     
-        // Create the semi-transparent background
+        // Draw a semi-transparent rectangle for tray background with the player's color
+        const playerColorHex = this.scene.gameManager.playerColors[this.playerNumber - 1].color;
+        const playerColor = Phaser.Display.Color.HexStringToColor(playerColorHex).color;
         const backgroundGraphics = this.scene.add.graphics();
-        const backgroundAlpha = 0.5; // Adjust this for desired transparency
-    
-        // Adjust the position of the background rectangle for the sprite's origin and padding
-        const backgroundX = startX - (pieceWidth / 2) - padding; // Offset to the left
-        const backgroundY = startY - (pieceHeight / 2) - padding; // Offset upward
-    
-        // Draw a rectangle that will serve as the background
-        backgroundGraphics.fillStyle(playerColor, backgroundAlpha); // Fill color with transparency
-        backgroundGraphics.fillRect(backgroundX, backgroundY, totalWidth + 2 * padding, backgroundHeight); // Draw the rectangle at the adjusted position
-        backgroundGraphics.setDepth(-1); // Ensure the background is behind other elements
-    
-        // Add the background graphics to the piece tray
+        backgroundGraphics.fillStyle(playerColor, 0.5)
+                          .fillRect(-padding, -padding, adjustedWidth, trayHeight)
+                          .setDepth(-1)
+                          .setInteractive(new Phaser.Geom.Rectangle(-padding, -padding, adjustedWidth, trayHeight), Phaser.Geom.Rectangle.Contains); // Set as interactive so we can't click through it
         this.pieceTray.add(backgroundGraphics);
     
         // Add pieces to the piece tray
         Object.entries(this.availablePieces).forEach(([pieceType, quantity], index) => {
-            const x = startX + index * (pieceWidth + spacing);
-            const y = startY;
+            const x = (pieceWidth / 2) + index * (pieceWidth + spacing) + this.trayScrollOffset;
+            const y = (pieceHeight / 2);
     
             // Create the piece sprite with the default texture
             const pieceIcon = this.scene.add.sprite(x, y, 'piece_' + pieceType)
                 .setOrigin(0.5, 0.5)
-                .setInteractive({ draggable: true }); // Make the piece icon draggable
-            pieceIcon.displayWidth = pieceWidth; // Set display size
+                .setInteractive({ draggable: true });
+            pieceIcon.displayWidth = pieceWidth; 
             pieceIcon.displayHeight = pieceHeight;
     
-            // Create a temporary Piece instance for recoloring
+            // Recolor and set texture
             const piece = new Piece(this.scene, 0, 0, pieceType, this.playerNumber);
-            
-            // Recolor the sprite
             piece.recolorSprite();
     
-            // Set the recolored texture to the icon if the texture exists
             if (this.scene.textures.exists('recolored_piece_' + pieceType + '_' + this.playerNumber)) {
                 pieceIcon.setTexture('recolored_piece_' + pieceType + '_' + this.playerNumber);
-            } else {
-                console.warn('Recolored texture does not exist:', 'recolored_piece_' + pieceType + '_' + this.playerNumber);
             }
     
             // Display the quantity above the icon
             const quantityText = this.scene.add.text(x + pieceWidth / 2 + pieceWidth / 5, y - pieceHeight / 2, quantity, { 
                 fontSize: '32px', 
-                fill: '#000', // black
+                fill: '#000', 
                 fontStyle: 'bold'
-            }).setOrigin(1, 0); // Align to the top-right corner
+            }).setOrigin(1, 0);
     
-            // Set the opacity based on the quantity of pieces available
-            if (quantity === 0) {
-                pieceIcon.setAlpha(0.5); // Set low opacity if no pieces are available
-            } else {
-                pieceIcon.setAlpha(1); // Set full opacity if pieces are available
-            }
+            pieceIcon.setAlpha(quantity === 0 ? 0.5 : 1); // Set opacity based on availability
     
-            // Add to piece tray container
-            this.pieceTray.add([pieceIcon, quantityText]); // Store both in piece tray
-    
-            // Clean up the non-UI piece instance
-            piece.sprite.destroy(); // Destroy the temporary piece instance
+            // Add pieces to the piece tray
+            this.pieceTray.add([pieceIcon, quantityText]); 
+            piece.sprite.destroy(); 
         });
-    
-        // Add pieceTray to the UI container
-        this.uiContainer.add(this.pieceTray);
-    }    
+    }
     
     populatePieceTray(trayX, trayY, trayWidth, trayHeight) {
         const pieceSize = trayHeight * 0.8; // Size of each piece icon
@@ -264,6 +245,22 @@ class UI {
                 draggedPiece = null; // Clear the reference
             }
         });
+    }
+    
+    addMouseWheelScrolling() {
+        this.scene.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
+            // Get the pointer's coordinates relative to the camera
+            const camera = this.scene.cameras.main;
+            const relativeX = pointer.x + camera.scrollX;
+            const relativeY = pointer.y + camera.scrollY;
+    
+            // Check if the mouse is over the piece tray using relative coordinates
+            if (this.pieceTray.getBounds().contains(relativeX, relativeY)) {
+                // Adjust the tray's x position based on deltaY
+                this.trayScrollOffset -= Math.round(deltaY * 0.5); // scroll speed
+                this.createPieceTray();
+            }
+        });
     }    
 
     updateUIPosition() {
@@ -283,6 +280,9 @@ class UI {
     
             // Adjust scale to counteract the zoom effect
             this.uiContainer.setScale(1 / camera.zoom);
+
+            // Re-draw piece tray
+            this.createPieceTray();
         }
     }
     

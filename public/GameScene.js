@@ -181,16 +181,24 @@ class GameScene extends Phaser.Scene {
         });
     
         // Event listener for zooming
-        window.addEventListener('wheel', (event) => {
-            let zoomFactor = 0.1;
-            if (event.deltaY < 0) {
-                this.cameras.main.zoom += zoomFactor;
-            } else {
-                this.cameras.main.zoom -= zoomFactor;
+        window.addEventListener('wheel', (pointer) => {
+            // If we're hovered over UI elements, do not zoom
+            // Get the pointer's coordinates relative to the camera
+            const camera = this.cameras.main;
+            const relativeX = pointer.x + camera.scrollX;
+            const relativeY = pointer.y + camera.scrollY;
+            // Check if the mouse is over the piece tray using relative coordinates
+            if (!this.ui.pieceTray.getBounds().contains(relativeX, relativeY)) {
+                let zoomFactor = 0.1;
+                if (event.deltaY < 0) {
+                    this.cameras.main.zoom += zoomFactor;
+                } else {
+                    this.cameras.main.zoom -= zoomFactor;
+                }
+                this.cameras.main.zoom = Phaser.Math.Clamp(this.cameras.main.zoom, 0.5, 2); // Zoom limits
+                this.drawBackground();
+                this.ui.updateUIPosition();
             }
-            this.cameras.main.zoom = Phaser.Math.Clamp(this.cameras.main.zoom, 0.5, 2); // Zoom limits
-            this.drawBackground();
-            this.ui.updateUIPosition();
         });
     
         // Variables to store the state of keys
