@@ -180,22 +180,35 @@ class GameScene extends Phaser.Scene {
             this.input.setDefaultCursor('auto'); // Revert cursor to default
         });
     
-        // Event listener for zooming
-        window.addEventListener('wheel', (pointer) => {
+        // Event listener for mouse wheel
+        this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
+            // Stop dragging on zoom
+            this.ui.stopDraggingPiece();
+
             // If we're hovered over UI elements, do not zoom
-            // Get the pointer's coordinates relative to the camera
-            const camera = this.cameras.main;
-            const relativeX = pointer.x + camera.scrollX;
-            const relativeY = pointer.y + camera.scrollY;
-            // Check if the mouse is over the piece tray using relative coordinates
-            if (!this.ui.pieceTray.getBounds().contains(relativeX, relativeY)) {
-                let zoomFactor = 0.1;
-                if (event.deltaY < 0) {
-                    this.cameras.main.zoom += zoomFactor;
-                } else {
-                    this.cameras.main.zoom -= zoomFactor;
+            // Convert the pointer's coordinates to global coordinates
+            const globalPointer = this.ui.cameraToGlobal(pointer.x, pointer.y);
+            // Check if the mouse is over the piece tray
+            if (this.ui.trayBounds.contains(globalPointer.x, globalPointer.y)) {
+                // Get the pointer's coordinates in global space
+                const { x: globalX, y: globalY } = this.ui.cameraToGlobal(pointer.x, pointer.y);
+
+                // Check if the mouse is over the piece tray using global coordinates
+                if (this.ui.trayBounds.contains(globalX, globalY)) {
+                    // Adjust the tray's piece offset based on deltaY
+                    this.ui.trayScrollOffset -= Math.round(deltaY * 0.5); // scroll speed
+                    this.ui.createPieceTray();
                 }
-                this.cameras.main.zoom = Phaser.Math.Clamp(this.cameras.main.zoom, 0.5, 2); // Zoom limits
+            // Zoom
+            } else {
+                const camera = this.cameras.main;
+                let zoomFactor = 0.1;
+                if (deltaY < 0) {
+                    camera.zoom += zoomFactor;
+                } else {
+                    camera.zoom -= zoomFactor;
+                }
+                camera.zoom = Phaser.Math.Clamp(camera.zoom, 0.5, 2); // Zoom limits
                 this.drawBackground();
                 this.ui.updateUIPosition();
             }
@@ -217,18 +230,22 @@ class GameScene extends Phaser.Scene {
     
         if (this.keys.up.isDown) {
             this.cameras.main.scrollY -= moveSpeed / this.cameras.main.zoom;
+            this.ui.stopDraggingPiece(); // Stop dragging on pan
         }
     
         if (this.keys.left.isDown) {
             this.cameras.main.scrollX -= moveSpeed / this.cameras.main.zoom;
+            this.ui.stopDraggingPiece(); // Stop dragging on pan
         }
     
         if (this.keys.down.isDown) {
             this.cameras.main.scrollY += moveSpeed / this.cameras.main.zoom;
+            this.ui.stopDraggingPiece(); // Stop dragging on pan
         }
     
         if (this.keys.right.isDown) {
             this.cameras.main.scrollX += moveSpeed / this.cameras.main.zoom;
+            this.ui.stopDraggingPiece(); // Stop dragging on pan
         }
     
         // Re-draw background and update UI if any movement happened

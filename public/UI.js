@@ -40,9 +40,6 @@ class UI {
         // Set up drag-and-drop functionality
         this.setupDragAndDrop();
 
-        // Add mouse wheel scrolling for the piece tray
-        this.addMouseWheelScrolling();
-
         // Handle window resize events
         this.scene.scale.on('resize', (gameSize) => {
             this.createMenuButton();
@@ -75,33 +72,33 @@ class UI {
         const camera = this.scene.cameras.main;
         const pieceHeight = 100; 
         const pieceWidth = 100; 
-        const spacing = pieceWidth / 3;
-        const padding = pieceWidth / 5;
+        const spacing = Math.round(pieceWidth / 3);
+        const padding = Math.round(pieceWidth / 5);
         const trayHeight = Math.round(pieceHeight + 2 * padding);
         const maxTrayWidth = Math.round(camera.width * 0.75);
         const adjustedWidth = Math.min((pieceWidth + spacing) * Object.keys(this.startingPieces).length, maxTrayWidth);
         const startX = Math.round((camera.width / 2) - (adjustedWidth / 2)); // Center horizontally
         const startY = Math.round(camera.height - pieceHeight - (padding * 3)); // Position at the bottom
 
-        // Piece tray
+        // Draw a semi-transparent rectangle for tray background with the player's color
+        const playerColorHex = this.scene.gameManager.playerColors[this.playerNumber - 1].color;
+        const playerColor = Phaser.Display.Color.HexStringToColor(playerColorHex).color;
+        this.trayRectangle = new Phaser.Geom.Rectangle(0, 0, adjustedWidth, trayHeight);
+        const backgroundGraphics = this.scene.add.graphics()
+                                .fillStyle(playerColor, 0.5)
+                                .fillRect(0, 0, adjustedWidth, trayHeight)
+                                .setDepth(-1)
+                                .setInteractive(this.trayRectangle, Phaser.Geom.Rectangle.Contains); // Set as interactive so we can't click through it
+        // Piece tray container
         if (this.pieceTray) {
             this.pieceTray.list.forEach(piece => {piece.destroy(); }); // Destroy the sprites and text
             this.pieceTray.removeAll(true).destroy(); // Remove all children from the pieceTray container
         }
         this.pieceTray = this.scene.add.container(startX, startY)
                         .setSize(adjustedWidth, trayHeight)
-                        .setInteractive(new Phaser.Geom.Rectangle(0, 0, adjustedWidth, pieceHeight), Phaser.Geom.Rectangle.Contains);
+                        .setInteractive(this.trayRectangle, Phaser.Geom.Rectangle.Contains)
+                        .add(backgroundGraphics);
         this.uiContainer.add(this.pieceTray);
-    
-        // Draw a semi-transparent rectangle for tray background with the player's color
-        const playerColorHex = this.scene.gameManager.playerColors[this.playerNumber - 1].color;
-        const playerColor = Phaser.Display.Color.HexStringToColor(playerColorHex).color;
-        const backgroundGraphics = this.scene.add.graphics();
-        backgroundGraphics.fillStyle(playerColor, 0.5)
-                          .fillRect(0, 0, adjustedWidth, trayHeight)
-                          .setDepth(-1)
-                          .setInteractive(new Phaser.Geom.Rectangle(-padding, -padding, adjustedWidth, trayHeight), Phaser.Geom.Rectangle.Contains); // Set as interactive so we can't click through it
-        this.pieceTray.add(backgroundGraphics);
 
         // Hide overflow with mask
         if (this.mask) {
@@ -114,14 +111,17 @@ class UI {
                     //.fillStyle(0xFF0000, 0.5) // Red color with 50% opacity for debugging
                     .fillRect(0, 0, maskWidth, maskHeight)
                     .setVisible(true)
-                    .setPosition(globalPos.x, globalPos.y);
+                    .setPosition(globalPos.x, globalPos.y)
         this.pieceTray.setMask(this.mask.createGeometryMask());
+        this.trayBounds = new Phaser.Geom.Rectangle(this.mask.x, this.mask.y, maskWidth, maskHeight); // interactible tray bounds, global pos/size
 
         // Add pieces to the piece tray
+        const maxScrollOffset = (adjustedWidth - padding - (pieceWidth + spacing)) - ((Object.keys(this.availablePieces).length - 1) * (pieceWidth + spacing));
+        this.trayScrollOffset = Math.min(Math.max(this.trayScrollOffset, maxScrollOffset), 0);
         Object.entries(this.availablePieces).forEach(([pieceType, quantity], index) => {
-            const x = (pieceWidth / 2) + index * (pieceWidth + spacing) + this.trayScrollOffset + padding;
-            const y = (pieceHeight / 2) + padding;
-    
+            const x = Math.round((pieceWidth / 2) + index * (pieceWidth + spacing) + padding + this.trayScrollOffset);
+            const y = Math.round((pieceHeight / 2) + padding);
+            
             // Create the piece sprite with the default texture
             const pieceIcon = this.scene.add.sprite(x, y, 'piece_' + pieceType)
                 .setOrigin(0.5, 0.5)
@@ -138,11 +138,16 @@ class UI {
             }
     
             // Display the quantity above the icon
-            const quantityText = this.scene.add.text(x + pieceWidth / 2 + pieceWidth / 5, y - pieceHeight / 2, quantity, { 
-                fontSize: '32px', 
-                fill: '#000', 
-                fontStyle: 'bold'
-            }).setOrigin(1, 0);
+            const quantityText = this.scene.add.text(
+                Math.round(x + pieceWidth / 2 + pieceWidth / 5), 
+                Math.round(y - pieceHeight / 2), 
+                quantity, 
+                { 
+                    fontSize: '32px', 
+                    fill: '#000', 
+                    fontStyle: 'bold'
+                }
+            ).setOrigin(1, 0);
     
             pieceIcon.setAlpha(quantity === 0 ? 0.5 : 1); // Set opacity based on availability
     
@@ -153,8 +158,8 @@ class UI {
     }
 
     setupDragAndDrop() {
-        let draggedPiece;
         let originalPiece; // Variable to hold the reference to the original tray piece
+        let startPos; // view coordinates where we started dragging
         
         // Drag start event
         this.scene.input.on('dragstart', (pointer, gameObject) => {
@@ -163,75 +168,80 @@ class UI {
             // Check if there are available pieces
             if (this.availablePieces[pieceType] > 0) {
                 originalPiece = gameObject; // Store a reference to the original piece
+                startPos = { x: pointer.x, y: pointer.y };
                 originalPiece.setAlpha(0.5); // Make the original piece semi-transparent
             
                 // Create a copy of the piece for dragging
-                draggedPiece = this.scene.add.sprite(pointer.x, pointer.y, originalPiece.texture.key)
+                const globalPointer = pointer.positionToCamera(this.scene.cameras.main);
+                this.draggedPiece = this.scene.add.sprite(globalPointer.x, globalPointer.y, originalPiece.texture.key)
                     .setOrigin(0.5, 0.5)
-                    .setScale(0.25)
+                    .setScale(originalPiece.scale / this.scene.cameras.main.zoom)
                     .setDepth(1000);
-            } else {
-                //console.warn(`No available pieces of type '${pieceType}' to drag.`);
             }
         });
         
         this.scene.input.on('drag', (pointer) => {
-            if (draggedPiece) {
-                // Get the global position of the pointer
-                const globalPointer = pointer.positionToCamera(this.scene.cameras.main);
+            if (this.draggedPiece) {
+                // Dragged piece gets smaller as it gets further away from the tray, until it meets tileSize
+                // Calculate the Y distance from the original piece
+                const yDistance = Math.abs(pointer.y - startPos.y);
         
+                // Calculate the scale based on the Y distance
+                const fixedDistance = originalPiece.width / 3;
+                const minScale = this.scene.board.tileSize / originalPiece.width;
+                const maxScale = originalPiece.scale / this.scene.cameras.main.zoom;
+                let scale;
+                if (pointer.y > startPos.y) {
+                    scale = originalPiece.scale;
+                }
+                else if (yDistance < fixedDistance) {
+                    scale = maxScale - (maxScale - minScale) * (yDistance / fixedDistance);
+                } else {
+                    scale = minScale;
+                }
+                this.draggedPiece.setScale(scale);
+
                 // Update the position of the dragged piece
-                draggedPiece.setPosition(globalPointer.x, globalPointer.y);
+                const globalPointer = pointer.positionToCamera(this.scene.cameras.main);
+                this.draggedPiece.setPosition(globalPointer.x, globalPointer.y);
             }
-        });        
+        });
         
         // Drag end event
         this.scene.input.on('dragend', (pointer) => {
-            if (draggedPiece) {
-                const pieceType = draggedPiece.texture.key.split('_')[2]; // Get piece type from texture key
+            if (this.draggedPiece) {
+                const pieceType = this.draggedPiece.texture.key.split('_')[2]; // Get piece type from texture key
                 const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y); // Get world coordinates
                 
                 // Check if the piece is dropped on the board
-                if (this.scene.board.boardContainer.getBounds().contains(worldPoint.x, worldPoint.y)) {
+                if (this.scene.board.boardContainer.getBounds().contains(worldPoint.x, worldPoint.y)
+                && !this.trayBounds.contains(worldPoint.x, worldPoint.y)
+                ) {
                     // Convert screen coordinates to board coordinates
                     const { boardX, boardY } = this.scene.board.screenToBoard(worldPoint.x, worldPoint.y);
-                    const success = this.scene.board.addPiece(boardX, boardY, pieceType, this.playerNumber); // Use the pieceType instead
-                    if (success) {
+                    if (this.scene.board.addPiece(boardX, boardY, pieceType, this.playerNumber)) {
                         // Decrement available pieces on successful placement
-                        if (this.availablePieces[pieceType] !== undefined) {
-                            this.availablePieces[pieceType] -= 1;
-                            this.createPieceTray();
-                        } else {
-                            console.warn(`Piece type '${pieceType}' is not defined in availablePieces.`);
-                        }                        
+                        this.availablePieces[pieceType] -= 1;
+                        this.createPieceTray();
                     } else {
                         originalPiece.setAlpha(1); 
-                        //console.warn('Failed to add piece at:', boardX, boardY);
                     }
+                } else {
+                    originalPiece.setAlpha(1);
                 }
 
                 // Remove the dragged piece
-                draggedPiece.destroy();
-                draggedPiece = null; // Clear the reference
+                this.stopDraggingPiece();
             }
-        });
+        });   
     }
-    
-    addMouseWheelScrolling() {
-        this.scene.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
-            // Get the pointer's coordinates relative to the camera
-            const camera = this.scene.cameras.main;
-            const relativeX = pointer.x + camera.scrollX;
-            const relativeY = pointer.y + camera.scrollY;
-    
-            // Check if the mouse is over the piece tray using relative coordinates
-            if (this.pieceTray.getBounds().contains(relativeX, relativeY)) {
-                // Adjust the tray's x position based on deltaY
-                this.trayScrollOffset -= Math.round(deltaY * 0.5); // scroll speed
-                this.createPieceTray();
-            }
-        });
-    }    
+
+    stopDraggingPiece() {
+        if (this.draggedPiece) {
+            this.draggedPiece.destroy();
+            this.draggedPiece = null;
+        }
+    }
 
     cameraToGlobal(viewX, viewY) {
         // Calculate global coordinates considering zoom and scroll
@@ -242,9 +252,18 @@ class UI {
         return { x: globalX, y: globalY };
     }
 
+    globalToCamera(globalX, globalY) {
+        // Calculate view coordinates considering zoom and scroll
+        const camera = this.scene.cameras.main;
+        const viewX = (globalX - camera.scrollX - camera.width / 2) * camera.zoom + camera.width / 2;
+        const viewY = (globalY - camera.scrollY - camera.height / 2) * camera.zoom + camera.height / 2;
+    
+        return { x: viewX, y: viewY };
+    }
+
     updateUIPosition() {
         if (this.uiContainer) {
-            // Get the top-left corner of the viewport in world coordinates using cameraToGlobal
+            // Get the top-left corner of the viewport in world coordinates
             const topLeft = this.cameraToGlobal(0, 0);
     
             // Set the UI container's position to match the viewport's top-left corner
