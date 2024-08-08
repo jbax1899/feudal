@@ -10,7 +10,8 @@ class Piece {
         'squire',
         'archer',
         'castleInner',
-        'castleOuter'
+        'castleOuter',
+        'castleBoth',
     ];
     static moves = [
         { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // blank
@@ -24,6 +25,7 @@ class Piece {
         { orthogonalRange: 3, diagonalRange: 3, isMounted: false},      // archer
         { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // inner castle (does not move)
         { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // outer castle (does not move)
+        { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // castle (does not move)
     ];
 
     constructor(scene, x, y, type, player) {

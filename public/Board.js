@@ -10,6 +10,7 @@ class Board {
         this.selectedPiece = null;
         this.selectedPlayer = 1;
         this.castleRotation = 0;
+        this.castleRotationLast = 0;
         this.debug = false;
     }
 
@@ -58,19 +59,23 @@ class Board {
 
             // DEBUG - change castle rotation for creation
             if (key === 'ArrowLeft') {
+                this.castleRotationLast = this.castleRotation;
                 if (this.castleRotation > 0) {
                     this.castleRotation--;
                 } else {
                     this.castleRotation = 3;
                 }
+                this.scene.ui.updateDragging();
                 console.log("Castle rotation: " + this.castleRotation);
             }
             if (key === 'ArrowRight') {
+                this.castleRotationLast = this.castleRotation;
                 if (this.castleRotation < 3) {
                     this.castleRotation++;
                 } else {
                     this.castleRotation = 0;
                 }
+                this.scene.ui.updateDragging();
                 console.log("Castle rotation: " + this.castleRotation);
             }
         });
@@ -226,9 +231,8 @@ class Board {
             return `Cannot place piece on mountain: (${boardX}, ${boardY})`;
         }
         // Cannot place mounted units on rough
-        console.log(type, Piece.types.indexOf(type))
         if (this.getTile(boardX, boardY) === 2 && Piece.moves[Piece.types.indexOf(type)].isMounted) {
-            return `Cannot place piece on mountain: (${boardX}, ${boardY})`;
+            return `Cannot place mounted piece on rough terrain: (${boardX}, ${boardY})`;
         }
         // Ensure space is empty
         if (this.getPieces(boardX, boardY)) {
@@ -261,7 +265,7 @@ class Board {
                     + " for player " + this.selectedPlayer);*/
 
         // If placing an outer castle piece, also place the adjacent inner castle piece based on rotation
-        if (type === Piece.types.indexOf('castleInner')) {
+        if (type === 'castleInner') {
             let outerCastleX = boardX;
             let outerCastleY = boardY;
             switch (this.castleRotation) {

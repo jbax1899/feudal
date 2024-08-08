@@ -14,14 +14,14 @@ class UI {
         this.pieceIcons = {}; // Object to store piece icons
         this.startingPieces = {
             'king': 1,
-            'prince': 1,
-            'duke': 1,
-            'knight': 2,
-            'sergeant': 2,
-            'pikeman': 4,
-            'squire': 1,
-            'archer': 1,
-            'castleInner': 1
+            'prince': 10,
+            'duke': 10,
+            'knight': 20,
+            'sergeant': 20,
+            'pikeman': 40,
+            'squire': 10,
+            'archer': 10,
+            'castleInner': 10
         };
         this.playerNumber = 1; // DEBUG, assuming 1
         this.trayScrollOffset = 0;
@@ -73,7 +73,7 @@ class UI {
         const camera = this.scene.cameras.main;
         const pieceHeight = 100; 
         const pieceWidth = 100; 
-        const spacing = Math.round(pieceWidth / 3);
+        const spacing = Math.round(pieceWidth / 2);
         const padding = Math.round(pieceWidth / 5);
         const trayHeight = Math.round(pieceHeight + 2 * padding);
         const maxTrayWidth = Math.round(camera.width * 0.75);
@@ -140,7 +140,7 @@ class UI {
     
             // Display the quantity above the icon
             const quantityText = this.scene.add.text(
-                Math.round(x + pieceWidth / 2 + pieceWidth / 5), 
+                Math.round(x + pieceWidth / 2 + (pieceWidth / 5) * quantity.toString().length), 
                 Math.round(y - pieceHeight / 2), 
                 quantity, 
                 { 
@@ -159,118 +159,68 @@ class UI {
     }
 
     setupDragAndDrop() {
-        let originalPiece; // Variable to hold the reference to the original tray piece
-        let startPos; // view coordinates where we started dragging
-        
         // Drag start event
         this.scene.input.on('dragstart', (pointer, gameObject) => {
             const pieceType = gameObject.texture.key.split('_')[2]; // Get piece type from texture key
             this.draggedPieceType = pieceType;
             // Check if there are available pieces
             if (this.availablePieces[pieceType] > 0) {
-                originalPiece = gameObject; // Store a reference to the original piece
-                startPos = { x: pointer.x, y: pointer.y };
-                originalPiece.setAlpha(0.5); // Make the original piece semi-transparent
-            
-                // Create a copy of the piece for dragging
+                this.originalPiece = gameObject; // Store a reference to the original piece
+                this.startPos = { x: pointer.x, y: pointer.y };
+                this.originalPiece.setAlpha(0.5); // Make the original piece semi-transparent
                 const globalPointer = pointer.positionToCamera(this.scene.cameras.main);
-                this.draggedPiece = this.scene.add.sprite(globalPointer.x, globalPointer.y, originalPiece.texture.key)
-                    .setOrigin(0.5, 0.5)
-                    .setScale(originalPiece.scale / this.scene.cameras.main.zoom)
-                    .setDepth(1000);
+                // Create a copy of the piece for dragging
+                // If dragging a castle, get the full sprite
+                if (pieceType === 'castleInner') {
+                    const tempCastlePiece = new Piece(this.scene, globalPointer.x, globalPointer.y, 'castleBoth', this.playerNumber);
+                    this.draggedPiece = tempCastlePiece.sprite
+                        .setOrigin(0.25, 0.5);
+                } else {
+                    this.draggedPiece = this.scene.add.sprite(globalPointer.x, globalPointer.y, this.originalPiece.texture.key)
+                        .setOrigin(0.5, 0.5)
+                        .setScale(this.originalPiece.scale / this.scene.cameras.main.zoom);
+                }
+                this.draggedPiece.setDepth(1000);
             }
         });
         
+        // On drag
         this.scene.input.on('drag', (pointer) => {
-            if (this.draggedPiece) {
-                const board = this.scene.board;
-                const camera = this.scene.cameras.main;
-
-                // Dragged piece gets smaller as it gets further away from the tray, until it meets tileSize
-                // Calculate the Y distance from the original piece
-                const yDistance = Math.abs(pointer.y - startPos.y);
-        
-                // Set size of dragged piece relative to Y distance from tray
-                const fixedDistance = originalPiece.width / 3;
-                const minScale = board.tileSize / originalPiece.width;
-                const maxScale = originalPiece.scale / camera.zoom;
-                let scale;
-                if (pointer.y > startPos.y) {
-                    scale = originalPiece.scale;
-                }
-                else if (yDistance < fixedDistance) {
-                    scale = maxScale - (maxScale - minScale) * (yDistance / fixedDistance);
-                } else {
-                    scale = minScale;
-                }
-                this.draggedPiece.setScale(scale);
-
-                // Update the position of the dragged piece
-                const globalPointer = pointer.positionToCamera(camera);
-                this.draggedPiece.setPosition(globalPointer.x, globalPointer.y);
-
-                // Get the coordinate of the board tile we're hovered over
-                const hovered = board.screenToBoard(globalPointer.x, globalPointer.y);
-                
-                // If we're dragging over a different tile, or over the tray, clear the old highlight
-                if (this.highlightedTile !== null && (
-                    (hovered.boardX !== this.highlightedTile.pos.boardX || hovered.boardY !== this.highlightedTile.pos.boardY)
-                    || this.trayBounds.contains(globalPointer.x, globalPointer.y))) {
-                        this.highlightedTile.graphics.destroy();
-                        this.highlightedTile = null;
-                }
-
-                // Make sure we're actually hovered over the board
-                if (!this.trayBounds.contains(globalPointer.x, globalPointer.y)
-                    && this.scene.board.isCoordinate(hovered.boardX, hovered.boardY)) {
-                    // Have we drawn the highlight yet?
-                    if (this.highlightedTile === null) {
-                        // Would it be legal to place the dragged piece there?
-                        const isLegalPlacement = board.isLegalPlacement(hovered.boardX, hovered.boardY, this.draggedPieceType);
-                        // If legal, draw a green box over the hovered tile, otherwise a red one
-                        const drawPos = board.boardToScreen(hovered.boardX, hovered.boardY);
-                        const graphics = this.scene.add.graphics();
-                        this.highlightedTile = {
-                            pos: { boardX: hovered.boardX, boardY: hovered.boardY },
-                            color: isLegalPlacement === null ? 0x00FF00 : 0xFF0000, // green if legal, red if not
-                            graphics: graphics
-                        }
-                        graphics.lineStyle(2, this.highlightedTile.color, 1)
-                                .strokeRect(drawPos.x, drawPos.y, board.tileSize, board.tileSize)
-                                .setDepth(1000);
-                    }
-                } else {
-                    this.highlightedTile = null;
-                }
-            }
+            this.updateDragging();
         });
         
         // Drag end event
         this.scene.input.on('dragend', (pointer) => {
             if (this.draggedPiece) {
-                const pieceType = this.draggedPiece.texture.key.split('_')[2]; // Get piece type from texture key
+                const pieceType = this.draggedPieceType;
                 const worldPoint = this.scene.cameras.main.getWorldPoint(pointer.x, pointer.y); // Get world coordinates
                 
                 // Check if the piece is dropped on the board
                 if (this.scene.board.boardContainer.getBounds().contains(worldPoint.x, worldPoint.y)
                 && !this.trayBounds.contains(worldPoint.x, worldPoint.y)
                 ) {
-                    // Convert screen coordinates to board coordinates
-                    const { boardX, boardY } = this.scene.board.screenToBoard(worldPoint.x, worldPoint.y);
-                    if (this.scene.board.addPiece(boardX, boardY, pieceType, this.playerNumber)) {
+                    const { boardX, boardY } = this.scene.board.screenToBoard(worldPoint.x, worldPoint.y); // Convert screen coordinates to board coordinates
+                    // If highlighted tile is red, placement is not legal
+                    if ((this.highlightedTile.color && this.highlightedTile.color == 0xFF0000) 
+                        || (this.highlightedTile.color2 && this.highlightedTile.color2 == 0xFF0000)) {
+                            this.originalPiece.setAlpha(1);
+                    }
+                    // Try adding piece to board
+                    else if (this.scene.board.addPiece(boardX, boardY, pieceType, this.playerNumber)) {
+                        // 
                         // Decrement available pieces on successful placement
                         this.availablePieces[pieceType] -= 1;
                         this.createPieceTray();
                     } else {
-                        originalPiece.setAlpha(1); 
+                        this.originalPiece.setAlpha(1); // Failed legal check within addPiece
                     }
                 } else {
-                    originalPiece.setAlpha(1);
+                    this.originalPiece.setAlpha(1); // Piece was not dropped on the board
                 }
 
                 // Stop highlighting board tiles
                 if (this.highlightedTile) {
-                    this.highlightedTile.graphics.destroy();
+                    this.highlightedTile.graphics.forEach(graphic => { graphic.destroy(); });
                     this.highlightedTile = null;
                 }
 
@@ -284,6 +234,96 @@ class UI {
         if (this.draggedPiece) {
             this.draggedPiece.destroy();
             this.draggedPiece = null;
+            if (this.highlightedTile !== null ) {
+                this.highlightedTile.graphics.forEach(graphic => graphic.destroy());
+                this.highlightedTile = null; 
+            }
+        }
+    }
+
+    updateDragging() {
+        if (!this.draggedPiece) return;
+    
+        const board = this.scene.board;
+        const camera = this.scene.cameras.main;
+        const pointer = this.scene.input.activePointer;
+    
+        // If dragging a castle, set sprite rotation
+        if (this.draggedPieceType === 'castleInner') {
+            this.draggedPiece.angle = (board.castleRotation * 90);
+        }
+    
+        // Dragged piece gets smaller as it gets further away from the tray, until it meets tileSize
+        const yDistance = Math.abs(pointer.y - this.startPos.y);
+        const fixedDistance = this.originalPiece.width / 3;
+        const minScale = board.tileSize / this.originalPiece.width;
+        const maxScale = this.originalPiece.scale / camera.zoom;
+        let scale;
+        if (pointer.y > this.startPos.y) {
+            scale = this.originalPiece.scale;
+        } else if (yDistance < fixedDistance) {
+            scale = maxScale - (maxScale - minScale) * (yDistance / fixedDistance);
+        } else {
+            scale = minScale;
+        }
+        this.draggedPiece.setScale(scale);
+    
+        // Update the position of the dragged piece
+        const globalPointer = pointer.positionToCamera(camera);
+        this.draggedPiece.setPosition(globalPointer.x, globalPointer.y);
+    
+        // Get the coordinate of the board tile we're hovered over
+        const hovered = board.screenToBoard(globalPointer.x, globalPointer.y);
+    
+        // Reset the highlights
+        if (this.highlightedTile !== null ) {
+            this.highlightedTile.graphics.forEach(graphic => graphic.destroy());
+            this.highlightedTile = null; 
+        }
+        // Board highlights when dragging piece over it
+        if (!this.trayBounds.contains(globalPointer.x, globalPointer.y)
+            && board.isCoordinate(hovered.boardX, hovered.boardY)) {
+            if (this.highlightedTile === null) {
+                const isLegalPlacement = board.isLegalPlacement(hovered.boardX, hovered.boardY, this.draggedPieceType);
+    
+                let adjustedX = hovered.boardX;
+                let adjustedY = hovered.boardY;
+                let castleOuterLegal = null;
+    
+                if (this.draggedPieceType === 'castleInner') {
+                    switch(board.castleRotation) {
+                        case 0: adjustedX = hovered.boardX + 1; break;
+                        case 1: adjustedY = hovered.boardY + 1; break;
+                        case 2: adjustedX = hovered.boardX - 1; break;
+                        case 3: adjustedY = hovered.boardY - 1; break;
+                    }
+                    castleOuterLegal = board.isLegalPlacement(adjustedX, adjustedY, this.draggedPieceType);
+                }
+    
+                const drawPos = board.boardToScreen(hovered.boardX, hovered.boardY);
+                const graphics = this.scene.add.graphics();
+                this.highlightedTile = {
+                    pos: { boardX: hovered.boardX, boardY: hovered.boardY },
+                    pos2: { boardX: adjustedX, boardY: adjustedY },
+                    color: isLegalPlacement === null ? 0x00FF00 : 0xFF0000,
+                    color2: castleOuterLegal === null ? 0x00FF00 : 0xFF0000,
+                    graphics: [graphics]
+                };
+                graphics.lineStyle(2, this.highlightedTile.color, 1)
+                        .strokeRect(drawPos.x, drawPos.y, board.tileSize, board.tileSize)
+                        .setDepth(900);
+    
+                if (this.draggedPieceType === 'castleInner') {
+                    const drawPos2 = board.boardToScreen(adjustedX, adjustedY);
+                    const graphics2 = this.scene.add.graphics()
+                        .lineStyle(2, this.highlightedTile.color2, 1)
+                        .strokeRect(drawPos2.x, drawPos2.y, board.tileSize, board.tileSize)
+                        .setDepth(900);
+                    this.highlightedTile.graphics.push(graphics2);
+                }
+            }
+        } else {
+            this.highlightedTile = null;
         }
     }
 

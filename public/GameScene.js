@@ -33,6 +33,7 @@ class GameScene extends Phaser.Scene {
         this.load.image('piece_archer', 'img/piece_archer.png');
         this.load.image('piece_castleInner', 'img/piece_castleInner.png');
         this.load.image('piece_castleOuter', 'img/piece_castleOuter.png');
+        this.load.image('piece_castleBoth', 'img/piece_castleBoth.png');
         // Board
         this.load.json('boardData', 'boardData.json');
         this.load.image('grass', 'img/grass.png');
@@ -230,28 +231,26 @@ class GameScene extends Phaser.Scene {
     
         if (this.keys.up.isDown) {
             this.cameras.main.scrollY -= moveSpeed / this.cameras.main.zoom;
-            this.ui.stopDraggingPiece(); // Stop dragging on pan
         }
     
         if (this.keys.left.isDown) {
             this.cameras.main.scrollX -= moveSpeed / this.cameras.main.zoom;
-            this.ui.stopDraggingPiece(); // Stop dragging on pan
         }
     
         if (this.keys.down.isDown) {
             this.cameras.main.scrollY += moveSpeed / this.cameras.main.zoom;
-            this.ui.stopDraggingPiece(); // Stop dragging on pan
         }
     
         if (this.keys.right.isDown) {
             this.cameras.main.scrollX += moveSpeed / this.cameras.main.zoom;
-            this.ui.stopDraggingPiece(); // Stop dragging on pan
         }
     
         // Re-draw background and update UI if any movement happened
         if (this.keys.up.isDown || this.keys.left.isDown || this.keys.down.isDown || this.keys.right.isDown) {
             this.updateBackgroundPosition();
             this.ui.updateUIPosition();
+            this.ui.stopDraggingPiece(); // Stop dragging on pan
+            this.ui.updateDragging();
         }
     }    
 }
