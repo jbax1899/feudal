@@ -211,32 +211,41 @@ class Board {
         return pieces.length > 0 ? pieces : null;
     }
 
-    // Method to add a piece at the specified board coordinates
-    addPiece(boardX, boardY, type, player) {
+    // Method to check if placement of a piece at a location on the board is legal
+    isLegalPlacement(boardX, boardY, type) {
         // Validate type
         if (type < 0 || type >= Piece.types.length) {
-            console.warn(`Invalid piece type: ${type}`);
-            return;
+            return `Invalid piece type: ${type}`;
         }
         // Ensure the coordinates are within the board bounds
         if (!this.isCoordinate(boardX, boardY)) {
-            console.warn(`Cannot place piece - Invalid board coordinates: (${boardX}, ${boardY})`);
-            return false;
+            return `Cannot place piece - Invalid board coordinates: (${boardX}, ${boardY})`;
         }
         // Cannot place any piece on a mountain
         if (this.getTile(boardX, boardY) === 3) {
-             console.warn(`Cannot place piece on mountain: (${boardX}, ${boardY})`);
-             return false;
+            return `Cannot place piece on mountain: (${boardX}, ${boardY})`;
         }
         // Cannot place mounted units on rough
+        console.log(type, Piece.types.indexOf(type))
         if (this.getTile(boardX, boardY) === 2 && Piece.moves[Piece.types.indexOf(type)].isMounted) {
-            console.warn(`Cannot place piece on mountain: (${boardX}, ${boardY})`);
-            return false;
-       }
+            return `Cannot place piece on mountain: (${boardX}, ${boardY})`;
+        }
         // Ensure space is empty
         if (this.getPieces(boardX, boardY)) {
-            console.warn(`Cannot place piece - Space is already occupied: (${boardX}, ${boardY})`);
-            return false; // Space is already occupied
+            return `Cannot place piece - Space is already occupied: (${boardX}, ${boardY})`; // Space is already occupied
+        }
+
+        //All checks passed, must be legal
+        return null;
+    }
+
+    // Method to add a piece at the specified board coordinates
+    addPiece(boardX, boardY, type, player) {
+        // Check legality of placement
+        const isLegal = this.isLegalPlacement(boardX, boardY, type);
+        if (isLegal !== null) {
+            console.log(isLegal);
+            return false;
         }
 
         // Convert board coordinates to screen coordinates
@@ -252,7 +261,7 @@ class Board {
                     + " for player " + this.selectedPlayer);*/
 
         // If placing an outer castle piece, also place the adjacent inner castle piece based on rotation
-        if (type === Piece.types.indexOf('castle_inner')) {
+        if (type === Piece.types.indexOf('castleInner')) {
             let outerCastleX = boardX;
             let outerCastleY = boardY;
             switch (this.castleRotation) {
@@ -283,7 +292,7 @@ class Board {
             const { x: outerCastleScreenX, y: outerCastleScreenY } = this.boardToScreen(outerCastleX, outerCastleY);
 
             // Create and place the outer castle piece
-            const outerCastlePiece = new Piece(this.scene, outerCastleScreenX, outerCastleScreenY, Piece.types.indexOf('castle_outer'), player);
+            const outerCastlePiece = new Piece(this.scene, outerCastleScreenX, outerCastleScreenY, Piece.types.indexOf('castleOuter'), player);
             outerCastlePiece.pos.x = outerCastleX;
             outerCastlePiece.pos.y = outerCastleY;
             outerCastlePiece.connectingCastle = piece; // castles can reference each other
@@ -307,7 +316,7 @@ class Board {
         if (pieces) {
             for (const piece of pieces) {
                 // Find the non-castle piece to remove
-                if (piece.typeName !== 'castle_inner' && piece.typeName !== 'castle_outer') {
+                if (piece.typeName !== 'castleInner' && piece.typeName !== 'castleOuter') {
                     pieceToRemove = piece;
                     break;
                 }
@@ -343,14 +352,14 @@ class Board {
         let castleAtPiece = null;
         const currentPieces = this.getPieces(piece.pos.x, piece.pos.y);
         for (const p of currentPieces) {
-            if (p.typeName === 'castle_inner' || p.typeName === 'castle_outer') {
+            if (p.typeName === 'castleInner' || p.typeName === 'castleOuter') {
                 castleAtPiece = p;
                 break; // Found the castle, exit loop early
             }
         }
     
         // Check rules for moving from an inner castle
-        if (castleAtPiece?.typeName === 'castle_inner') {
+        if (castleAtPiece?.typeName === 'castleInner') {
             const { connectingCastle } = castleAtPiece;
             if (boardX !== connectingCastle.pos.x || boardY !== connectingCastle.pos.y) {
                 return 0; // Must move to the connecting castle
@@ -364,7 +373,7 @@ class Board {
     
         if (otherPieces) {
             for (const p of otherPieces) {
-                if (p.typeName === 'castle_inner' || p.typeName === 'castle_outer') {
+                if (p.typeName === 'castleInner' || p.typeName === 'castleOuter') {
                     targetCastle = p;
                 } else {
                     enemyPiece = p; // Capture the enemy piece
@@ -380,7 +389,7 @@ class Board {
             }
     
             // Check if enemy piece is on an inner castle
-            if (targetCastle?.typeName === 'castle_inner') {
+            if (targetCastle?.typeName === 'castleInner') {
                 const { connectingCastle } = targetCastle;
                 if (piece.pos.x !== connectingCastle.pos.x || piece.pos.y !== connectingCastle.pos.y) {
                     return 0; // Can't capture unless on the connecting castle
@@ -392,7 +401,7 @@ class Board {
     
         // Handle castle movement rules
         if (targetCastle) {
-            if (targetCastle.typeName === 'castle_inner') {
+            if (targetCastle.typeName === 'castleInner') {
                 // Special rule for archers: cannot move onto their own inner castle
                 if (piece.typeName === 'archer' && targetCastle.playerNumber === piece.playerNumber) {
                     return 0; // Archers cannot move onto their own inner castle
@@ -403,7 +412,7 @@ class Board {
                     return 3; // Special move logic for moving to own castle
                 }
                 return 0; // Invalid move
-            } else if (targetCastle.typeName === 'castle_outer') {
+            } else if (targetCastle.typeName === 'castleOuter') {
                 return 3; // Special move onto outer castle
             }
         }

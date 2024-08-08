@@ -31,8 +31,8 @@ class GameScene extends Phaser.Scene {
         this.load.image('piece_pikeman', 'img/piece_pikeman.png');
         this.load.image('piece_squire', 'img/piece_squire.png');
         this.load.image('piece_archer', 'img/piece_archer.png');
-        this.load.image('piece_castle_inner', 'img/piece_castle_inner.png');
-        this.load.image('piece_castle_outer', 'img/piece_castle_outer.png');
+        this.load.image('piece_castleInner', 'img/piece_castleInner.png');
+        this.load.image('piece_castleOuter', 'img/piece_castleOuter.png');
         // Board
         this.load.json('boardData', 'boardData.json');
         this.load.image('grass', 'img/grass.png');

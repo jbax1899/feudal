@@ -21,10 +21,11 @@ class UI {
             'pikeman': 4,
             'squire': 1,
             'archer': 1,
-            'castle_inner': 1
+            'castleInner': 1
         };
         this.playerNumber = 1; // DEBUG, assuming 1
         this.trayScrollOffset = 0;
+        this.highlightedTile = null;
     }
 
     create() {
@@ -164,7 +165,7 @@ class UI {
         // Drag start event
         this.scene.input.on('dragstart', (pointer, gameObject) => {
             const pieceType = gameObject.texture.key.split('_')[2]; // Get piece type from texture key
-    
+            this.draggedPieceType = pieceType;
             // Check if there are available pieces
             if (this.availablePieces[pieceType] > 0) {
                 originalPiece = gameObject; // Store a reference to the original piece
@@ -182,14 +183,17 @@ class UI {
         
         this.scene.input.on('drag', (pointer) => {
             if (this.draggedPiece) {
+                const board = this.scene.board;
+                const camera = this.scene.cameras.main;
+
                 // Dragged piece gets smaller as it gets further away from the tray, until it meets tileSize
                 // Calculate the Y distance from the original piece
                 const yDistance = Math.abs(pointer.y - startPos.y);
         
-                // Calculate the scale based on the Y distance
+                // Set size of dragged piece relative to Y distance from tray
                 const fixedDistance = originalPiece.width / 3;
-                const minScale = this.scene.board.tileSize / originalPiece.width;
-                const maxScale = originalPiece.scale / this.scene.cameras.main.zoom;
+                const minScale = board.tileSize / originalPiece.width;
+                const maxScale = originalPiece.scale / camera.zoom;
                 let scale;
                 if (pointer.y > startPos.y) {
                     scale = originalPiece.scale;
@@ -202,8 +206,42 @@ class UI {
                 this.draggedPiece.setScale(scale);
 
                 // Update the position of the dragged piece
-                const globalPointer = pointer.positionToCamera(this.scene.cameras.main);
+                const globalPointer = pointer.positionToCamera(camera);
                 this.draggedPiece.setPosition(globalPointer.x, globalPointer.y);
+
+                // Get the coordinate of the board tile we're hovered over
+                const hovered = board.screenToBoard(globalPointer.x, globalPointer.y);
+                
+                // If we're dragging over a different tile, or over the tray, clear the old highlight
+                if (this.highlightedTile !== null && (
+                    (hovered.boardX !== this.highlightedTile.pos.boardX || hovered.boardY !== this.highlightedTile.pos.boardY)
+                    || this.trayBounds.contains(globalPointer.x, globalPointer.y))) {
+                        this.highlightedTile.graphics.destroy();
+                        this.highlightedTile = null;
+                }
+
+                // Make sure we're actually hovered over the board
+                if (!this.trayBounds.contains(globalPointer.x, globalPointer.y)
+                    && this.scene.board.isCoordinate(hovered.boardX, hovered.boardY)) {
+                    // Have we drawn the highlight yet?
+                    if (this.highlightedTile === null) {
+                        // Would it be legal to place the dragged piece there?
+                        const isLegalPlacement = board.isLegalPlacement(hovered.boardX, hovered.boardY, this.draggedPieceType);
+                        // If legal, draw a green box over the hovered tile, otherwise a red one
+                        const drawPos = board.boardToScreen(hovered.boardX, hovered.boardY);
+                        const graphics = this.scene.add.graphics();
+                        this.highlightedTile = {
+                            pos: { boardX: hovered.boardX, boardY: hovered.boardY },
+                            color: isLegalPlacement === null ? 0x00FF00 : 0xFF0000, // green if legal, red if not
+                            graphics: graphics
+                        }
+                        graphics.lineStyle(2, this.highlightedTile.color, 1)
+                                .strokeRect(drawPos.x, drawPos.y, board.tileSize, board.tileSize)
+                                .setDepth(1000);
+                    }
+                } else {
+                    this.highlightedTile = null;
+                }
             }
         });
         
@@ -228,6 +266,12 @@ class UI {
                     }
                 } else {
                     originalPiece.setAlpha(1);
+                }
+
+                // Stop highlighting board tiles
+                if (this.highlightedTile) {
+                    this.highlightedTile.graphics.destroy();
+                    this.highlightedTile = null;
                 }
 
                 // Remove the dragged piece

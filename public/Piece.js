@@ -9,8 +9,8 @@ class Piece {
         'pikeman',
         'squire',
         'archer',
-        'castle_inner',
-        'castle_outer'
+        'castleInner',
+        'castleOuter'
     ];
     static moves = [
         { orthogonalRange: 0, diagonalRange: 0, isMounted: false},      // blank
@@ -57,7 +57,7 @@ class Piece {
 
         // Set depth
         // Castle must appear below other pieces
-        if (this.typeName === 'castle_inner' || this.typeName === 'castle_outer') {
+        if (this.typeName === 'castleInner' || this.typeName === 'castleOuter') {
             this.sprite.setDepth(0)
         } else {
             this.sprite.setDepth(1)
@@ -75,7 +75,7 @@ class Piece {
             // Select this piece, if it wasn't already
             // Cannot select castle pieces
             if (priorSelected !== this 
-                && this.typeName !== 'castle_inner' && this.typeName !== 'castle_outer') {
+                && this.typeName !== 'castleInner' && this.typeName !== 'castleOuter') {
                 this.scene.board.selectedPiece = this;
                 this.scene.board.showMoves(this);
                 //console.log(`${Piece.types[this.type]} piece selected (p` + this.playerNumber + ')');
