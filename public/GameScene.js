@@ -13,6 +13,8 @@ class GameScene extends Phaser.Scene {
         this.isDragging = false;
         this.startX = 0;
         this.startY = 0;
+        this.zoomMin = 0.5;
+        this.zoomMax = 2;
     }
 
     preload() {
@@ -55,6 +57,10 @@ class GameScene extends Phaser.Scene {
             // Start drawing UI
             this.ui = new UI(this);
             this.ui.create();
+
+            // Center camera
+            this.zoomMin = this.board.minZoom();
+            this.board.centerCamera();
         });
     }
 
@@ -66,6 +72,9 @@ class GameScene extends Phaser.Scene {
         this.scale.on('resize', (gameSize) => {
             this.drawBackground();
             this.ui.updateUIPosition();
+            if (this.scene.board) {
+                this.scene.zoomMin = this.scene.board.minZoom();
+            }
         });
     }
 
@@ -181,7 +190,6 @@ class GameScene extends Phaser.Scene {
             this.input.setDefaultCursor('auto'); // Revert cursor to default
         });
     
-        // Event listener for mouse wheel
         this.input.on('wheel', (pointer, gameObjects, deltaX, deltaY, deltaZ) => {
             // Stop dragging on zoom
             this.ui.stopDraggingPiece();
@@ -209,7 +217,7 @@ class GameScene extends Phaser.Scene {
                 } else {
                     camera.zoom -= zoomFactor;
                 }
-                camera.zoom = Phaser.Math.Clamp(camera.zoom, 0.5, 2); // Zoom limits
+                camera.zoom = Phaser.Math.Clamp(camera.zoom, this.zoomMin, this.zoomMax); // Zoom limits
                 this.drawBackground();
                 this.ui.updateUIPosition();
             }
@@ -252,7 +260,7 @@ class GameScene extends Phaser.Scene {
             this.ui.stopDraggingPiece(); // Stop dragging on pan
             this.ui.updateDragging();
         }
-    }    
+    }
 }
 
 export default GameScene;

@@ -11,7 +11,7 @@ class Board {
         this.selectedPlayer = 1;
         this.castleRotation = 0;
         this.castleRotationLast = 0;
-        this.debug = false;
+        this.debug = true;
     }
 
     create() {
@@ -80,7 +80,7 @@ class Board {
             }
             if (key === ' ') {
                 // Center screen on board
-                
+                this.centerCamera();
             }
         });
 
@@ -546,6 +546,46 @@ class Board {
         this.removePiece(boardX, boardY);
         this.movePiece(piece, boardX, boardY);
     }
+
+    minZoom() {
+        // Calculate the required zoom to fit the whole board
+        const camera = this.scene.cameras.main;
+        const cameraWidth = camera.width;
+        const cameraHeight = camera.height;
+        const boardSize = this.boardData.tiles.length * this.tileSize;
+        return Math.min(cameraWidth / boardSize, cameraHeight / boardSize) * 0.9;
+    }
+
+    centerCamera() {
+        const camera = this.scene.cameras.main;
+    
+        // Get the rotation in radians
+        const rotation = Phaser.Math.DegToRad(this.boardContainer.angle);
+    
+        // Calculate the container's center before rotation
+        const centerX = this.boardContainer.x + this.boardContainer.width / 2;
+        const centerY = this.boardContainer.y + this.boardContainer.height / 2;
+    
+        // Calculate the rotated center position
+        const rotatedCenterX = centerX * Math.cos(rotation) - centerY * Math.sin(rotation);
+        const rotatedCenterY = centerX * Math.sin(rotation) + centerY * Math.cos(rotation);
+    
+        // Center the camera on the rotated container center
+        camera.centerOn(rotatedCenterX, rotatedCenterY);
+
+        // Set the camera zoom if it's less than the required zoom
+        const requiredZoom = this.minZoom();
+        if (camera.zoom > requiredZoom) {
+            camera.setZoom(requiredZoom); // add a little padding
+        }
+
+        // Re-draw background
+        this.scene.drawBackground();
+
+        // Update UI
+        this.scene.ui.updateUIPosition();
+    }
+    
 }
 
 export default Board;
