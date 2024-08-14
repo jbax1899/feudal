@@ -15,18 +15,16 @@ class Board {
     }
 
     create() {
-        this.boardData = this.scene.cache.json.get('boardData');
-        if (!this.boardData) {
-            console.error('Board data not found in cache');
-            return;
-        }
-
         this.boardContainer = this.scene.add.container();
         this.drawBoard();
 
+        // Center camera
+        this.scene.zoomMin = this.minZoom();
+        this.centerCamera();
+
         // Define the interactive area
-        const boardWidth = this.boardData.tiles[0].length * this.tileSize;
-        const boardHeight = this.boardData.tiles.length * this.tileSize;
+        const boardWidth = this.scene.boardData.tiles[0].length * this.tileSize;
+        const boardHeight = this.scene.boardData.tiles.length * this.tileSize;
         this.boardContainer.setSize(boardWidth, boardHeight);
         this.boardContainer.setInteractive(new Phaser.Geom.Rectangle(0, 0, boardWidth, boardHeight), Phaser.Geom.Rectangle.Contains);
         
@@ -124,12 +122,13 @@ class Board {
             3: 'mountain'
         };
     
-        const numRows = this.boardData.tiles.length;
-        const numCols = this.boardData.tiles[0].length;
+        const boardData = this.scene.boardData;
+        const numRows = boardData.tiles.length;
+        const numCols = boardData.tiles[0].length;
     
         for (let row = 0; row < numRows; row++) {
             for (let col = 0; col < numCols; col++) {
-                const tileType = this.boardData.tiles[row][col];
+                const tileType = boardData.tiles[row][col];
                 const tileKey = tiles[tileType];
                 if (tileKey) {
                     // sprite
@@ -186,16 +185,16 @@ class Board {
     isCoordinate(boardX, boardY) {
         return (
             boardX >= 0 &&
-            boardX < this.boardData.tiles[0].length &&
+            boardX < this.scene.boardData.tiles[0].length &&
             boardY >= 0 &&
-            boardY < this.boardData.tiles.length
+            boardY < this.scene.boardData.tiles.length
         );
     }
 
     getTile(boardX, boardY) {
         // Check if coordinate is within the board
         if (this.isCoordinate(boardX, boardY)) {
-            return this.boardData.tiles[boardY][boardX];
+            return this.scene.boardData.tiles[boardY][boardX];
         }
     }
 
@@ -255,9 +254,11 @@ class Board {
         piece.pos.x = boardX;
         piece.pos.y = boardY;
         this.pieces.push(piece);
-        /*console.log("Created " + Piece.types[piece.type] 
-                    + " piece at " + boardX + "," + boardY 
-                    + " for player " + this.selectedPlayer);*/
+        if (this.debug) {
+            console.log("Created " + Piece.types[piece.type] 
+                + " piece at " + boardX + "," + boardY 
+                + " for player " + this.selectedPlayer);
+        }
 
         // If placing an outer castle piece, also place the adjacent inner castle piece based on rotation
         if (type === 'castleInner') {
@@ -552,7 +553,7 @@ class Board {
         const camera = this.scene.cameras.main;
         const cameraWidth = camera.width;
         const cameraHeight = camera.height;
-        const boardSize = this.boardData.tiles.length * this.tileSize;
+        const boardSize = this.scene.boardData.tiles.length * this.tileSize;
         return Math.min(cameraWidth / boardSize, cameraHeight / boardSize) * 0.9;
     }
 
@@ -563,8 +564,9 @@ class Board {
         const rotation = Phaser.Math.DegToRad(this.boardContainer.angle);
     
         // Calculate the container's center before rotation
-        const centerX = this.boardContainer.x + this.boardContainer.width / 2;
-        const centerY = this.boardContainer.y + this.boardContainer.height / 2;
+        const boardSize = this.scene.boardData.tiles.length * this.tileSize;
+        const centerX = this.boardContainer.x + boardSize / 2;
+        const centerY = this.boardContainer.y + boardSize / 2;
     
         // Calculate the rotated center position
         const rotatedCenterX = centerX * Math.cos(rotation) - centerY * Math.sin(rotation);
@@ -583,7 +585,9 @@ class Board {
         this.scene.drawBackground();
 
         // Update UI
-        this.scene.ui.updateUIPosition();
+        if (this.scene.ui) {
+            this.scene.ui.updateUIPosition();
+        }
     }
     
 }

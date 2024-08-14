@@ -1,3 +1,4 @@
+import Board from './Board.js';
 import Player from './Player.js';
 
 class GameManager {
@@ -21,26 +22,81 @@ class GameManager {
                         new Player(this.scene, 5),
                         new Player(this.scene, 6)];
         this.isRotatingBoard = false;
-        this.gameStage = "";
+        this.stages = [
+            { number: 0, name: "cointoss" },
+            { number: 1, name: "positioning" },
+            { number: 2, name: "obscure" },
+            { number: 3, name: "placement" },
+            { number: 4, name: "play" },
+            { number: 5, name: "gameover" }
+        ];
+        this.stage = this.stages[0];
+        this.flipWinner;
     }
 
     create() {
         // Can rotate board on game setup
         this.scene.input.keyboard.on('keydown', (event) => {
-            if (event.key === '[') {
-                this.turnBoard(0);
+            if (event.key === 'q') {
+                if (this.stage.name === "positioning") {
+                    this.turnBoard(1);
+                }
             }
-            else if (event.key === ']') {
-                this.turnBoard(1);
+            else if (event.key === 'e') {
+                if (this.stage.name === "positioning") {
+                    this.turnBoard(0);
+                }
+            }
+            else if (event.key === 'Enter') {
+                this.advanceStage();
             }
         });
+
+        // DEBUG - coinflip stage
+        this.flipWinner = 0 //Math.random() < 0.5 ? 0 : 1;
+        console.log("Flip winner: " + this.flipWinner);
+        this.advanceStage();
     }
 
     update() {
         // Game logic update
     }
 
+    advanceStage() {
+        if (this.stage.number < this.stages.length) {
+            this.stage = this.stages[this.stage.number + 1];
+            console.log("Advancing to " + this.stage.name + " stage");
+        }
+
+        if (this.stage.name === "placement") {
+            // DEBUG - placement stage
+            // rotate board data
+            const angle = this.scene.board.boardContainer.angle;
+            let rotations = 0;
+            if (angle === 90 || angle === -270) {
+                rotations = 1;
+            } else if (angle === 180 || angle === -180) {
+                rotations = 2;
+            } else if (angle === -90 || angle === 270) {
+                rotations = 3;
+            }
+            for (let r = 0; r < rotations; r++) {
+                // Rotate board data clockwise
+                const matrix = this.scene.boardData.tiles;
+                // Transpose the matrix
+                const transposed = matrix[0].map((_, i) => matrix.map(row => row[i]));
+                // Reverse each row
+                this.scene.boardData.tiles = transposed.map(row => row.reverse());
+            }
+            // new board will replace the old after being completely initialized
+            this.scene.board.boardContainer.destroy();
+            this.scene.board = new Board(this.scene);
+            this.scene.board.create();
+        }
+    }
+
     turnBoard(direction) {
+        // Visually rotate the board container 90 degrees
         if (this.isRotatingBoard) {
             return; // Exit if a tween is in progress
         }

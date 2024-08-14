@@ -46,6 +46,13 @@ class GameScene extends Phaser.Scene {
             // Draw background
             this.drawBackground();
 
+            // Load board data
+            this.boardData = this.cache.json.get('boardData');
+            if (!this.boardData) {
+                console.error('Board data not found in cache');
+                return;
+            }
+
             // Create board
             this.board = new Board(this);
             this.board.create();
@@ -57,10 +64,6 @@ class GameScene extends Phaser.Scene {
             // Start drawing UI
             this.ui = new UI(this);
             this.ui.create();
-
-            // Center camera
-            this.zoomMin = this.board.minZoom();
-            this.board.centerCamera();
         });
     }
 

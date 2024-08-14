@@ -44,7 +44,6 @@ class UI {
         // Handle window resize events
         this.scene.scale.on('resize', (gameSize) => {
             this.createMenuButton();
-            //this.createPieceTray();
         });
 
         // Event listener for clicks anywhere on the screen
@@ -59,7 +58,7 @@ class UI {
         this.uiContainer = this.scene.add.container(0, 0);
         this.uiContainer.setDepth(1000); // Ensure the UI is above other elements
         this.createMenuButton();
-        //this.createPieceTray();
+        this.updateUIPosition();
     }
 
     addPiece(pieceType, count) {
