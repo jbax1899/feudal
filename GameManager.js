@@ -21,6 +21,7 @@ class GameManager {
                         new Player(this.scene, 5),
                         new Player(this.scene, 6)];
         this.isRotatingBoard = false;
+        this.gameStage = "";
     }
 
     create() {
