@@ -78,6 +78,10 @@ class Board {
                 this.scene.ui.updateDragging();
                 console.log("Castle rotation: " + this.castleRotation);
             }
+            if (key === ' ') {
+                // Center screen on board
+                
+            }
         });
 
         // Event listener for clicks. Was this.boardContainer, but only worked for top-left quarter of board?
@@ -156,19 +160,10 @@ class Board {
         thickLineGraphics.moveTo(0, 12 * this.tileSize);
         thickLineGraphics.lineTo(numCols * this.tileSize, 12 * this.tileSize);
         thickLineGraphics.strokePath();
-        // Add to container
-        this.boardContainer.add(thickLineGraphics);
-
         // Set depth of board container
         this.boardContainer.setDepth(-1);
-
-        if (this.debug) {
-            const graphics = this.scene.add.graphics();
-            graphics.lineStyle(2, 0xff0000); // Set border color (red) and thickness
-            const bounds = this.boardContainer.getBounds();
-            graphics.strokeRect(bounds.x, bounds.y, bounds.width, bounds.height);
-            graphics.setDepth(1000); // Ensure it's above other elements
-        }
+        // Add to container
+        this.boardContainer.add(thickLineGraphics);
     }
 
     // Method to convert screen coordinates to board coordinates
