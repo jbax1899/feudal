@@ -1,6 +1,6 @@
 import Board from './Board.js';
-import UI from './UI.js';
 import GameManager from './GameManager.js';
+import UI from './UI.js';
 
 class GameScene extends Phaser.Scene {
     constructor() {
@@ -63,7 +63,7 @@ class GameScene extends Phaser.Scene {
 
             // Start drawing UI
             this.ui = new UI(this);
-            this.ui.create();
+            this.ui.create(); 
         });
     }
 
@@ -81,8 +81,37 @@ class GameScene extends Phaser.Scene {
         });
     }
 
-    update() {
+    update(time, delta) {
         this.gameManager.update();
+        this.ui.update();
+
+        // Continuously check key states and move the camera
+        // We do this instead of event listeners to eliminate the continous press delay
+        const moveSpeed = 0.7 * delta;
+    
+        if (this.keys.up.isDown) {
+            this.cameras.main.scrollY -= moveSpeed / this.cameras.main.zoom;
+        }
+    
+        if (this.keys.left.isDown) {
+            this.cameras.main.scrollX -= moveSpeed / this.cameras.main.zoom;
+        }
+    
+        if (this.keys.down.isDown) {
+            this.cameras.main.scrollY += moveSpeed / this.cameras.main.zoom;
+        }
+    
+        if (this.keys.right.isDown) {
+            this.cameras.main.scrollX += moveSpeed / this.cameras.main.zoom;
+        }
+    
+        // Re-draw background and update UI if any movement happened
+        if (this.keys.up.isDown || this.keys.left.isDown || this.keys.down.isDown || this.keys.right.isDown) {
+            this.updateBackgroundPosition();
+            this.ui.updateUIPosition();
+            this.ui.stopDraggingPiece(); // Stop dragging on pan
+            this.ui.updateDragging();
+        }
     }
 
     drawBackground() {
@@ -233,36 +262,6 @@ class GameScene extends Phaser.Scene {
             down: Phaser.Input.Keyboard.KeyCodes.S,
             right: Phaser.Input.Keyboard.KeyCodes.D
         });
-    }
-    
-    update(time, delta) {
-        // Continuously check key states and move the camera
-        // We do this instead of event listeners to eliminate the continous press delay
-        const moveSpeed = 0.7 * delta;
-    
-        if (this.keys.up.isDown) {
-            this.cameras.main.scrollY -= moveSpeed / this.cameras.main.zoom;
-        }
-    
-        if (this.keys.left.isDown) {
-            this.cameras.main.scrollX -= moveSpeed / this.cameras.main.zoom;
-        }
-    
-        if (this.keys.down.isDown) {
-            this.cameras.main.scrollY += moveSpeed / this.cameras.main.zoom;
-        }
-    
-        if (this.keys.right.isDown) {
-            this.cameras.main.scrollX += moveSpeed / this.cameras.main.zoom;
-        }
-    
-        // Re-draw background and update UI if any movement happened
-        if (this.keys.up.isDown || this.keys.left.isDown || this.keys.down.isDown || this.keys.right.isDown) {
-            this.updateBackgroundPosition();
-            this.ui.updateUIPosition();
-            this.ui.stopDraggingPiece(); // Stop dragging on pan
-            this.ui.updateDragging();
-        }
     }
 }
 

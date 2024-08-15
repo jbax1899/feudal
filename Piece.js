@@ -86,7 +86,7 @@ class Piece {
     }
 
     recolorSprite() {
-        const colorData = this.scene.gameManager.playerColors[this.playerNumber - 1];
+        const colorData = this.scene.gameManager.playerColors[this.playerNumber];
         if (!colorData) {
             console.warn('Invalid player number:', this.playerNumber);
             return;

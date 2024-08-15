@@ -1,4 +1,5 @@
 import Piece from './Piece.js';
+import Notification from './Notification.js';
 
 class UI {
     constructor(scene) {
@@ -8,10 +9,12 @@ class UI {
             teal: 0x008080,
             darkteal: 0x004d4d,
         };
-        this.uiContainer = null; // Container for all UI elements
-        this.pieceTray = null; // Container for the piece tray
-        this.availablePieces = {}; // Object to track available pieces
-        this.pieceIcons = {}; // Object to store piece icons
+        this.uiContainer = null;
+        this.notificationContainer = scene.add.container(0, 0);
+        this.notifications = [];
+        this.pieceTray = null;
+        this.availablePieces = {};
+        this.pieceIcons = {};
         this.startingPieces = {
             'king': 1,
             'prince': 10,
@@ -23,7 +26,7 @@ class UI {
             'archer': 10,
             'castleInner': 10
         };
-        this.playerNumber = 1; // DEBUG, assuming 1
+        this.playerNumber = 0; // DEBUG
         this.trayScrollOffset = 0;
         this.highlightedTile = null;
     }
@@ -59,6 +62,13 @@ class UI {
         this.uiContainer.setDepth(1000); // Ensure the UI is above other elements
         this.createMenuButton();
         this.updateUIPosition();
+        this.uiContainer.add(this.notificationContainer);
+    }
+
+    update() {
+        for (const notification of this.notifications) {
+            notification.update();
+        }
     }
 
     addPiece(pieceType, count) {
@@ -81,7 +91,7 @@ class UI {
         const startY = Math.round(camera.height - pieceHeight - (padding * 3)); // Position at the bottom
 
         // Draw a semi-transparent rectangle for tray background with the player's color
-        const playerColorHex = this.scene.gameManager.playerColors[this.playerNumber - 1].color;
+        const playerColorHex = this.scene.gameManager.playerColors[this.playerNumber].color;
         const playerColor = Phaser.Display.Color.HexStringToColor(playerColorHex).color;
         this.trayRectangle = new Phaser.Geom.Rectangle(0, 0, adjustedWidth, trayHeight);
         const backgroundGraphics = this.scene.add.graphics()
@@ -475,6 +485,10 @@ class UI {
 
         // Add UI elements to the container
         this.uiContainer.add([this.menuButton, this.dropdownContainer]);
+    }
+
+    addNotification(text) {
+        this.notifications.push(new Notification(this.scene, text));
     }
 }
 

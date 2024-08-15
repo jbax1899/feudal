@@ -55,7 +55,6 @@ class GameManager {
         // DEBUG - coinflip stage
         this.flipWinner = 0 //Math.random() < 0.5 ? 0 : 1;
         console.log("Flip winner: " + this.flipWinner);
-        this.advanceStage();
     }
 
     update() {
@@ -66,6 +65,7 @@ class GameManager {
         if (this.stage.number < this.stages.length) {
             this.stage = this.stages[this.stage.number + 1];
             console.log("Advancing to " + this.stage.name + " stage");
+            this.scene.ui.addNotification("Advancing to " + this.stage.name + " stage");
         }
 
         if (this.stage.name === "placement") {
@@ -128,10 +128,6 @@ class GameManager {
                 this.isRotatingBoard = false;
             }
         });
-    }
-
-    notify(message) {
-
     }
 }
 
