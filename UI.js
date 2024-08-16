@@ -39,7 +39,7 @@ class UI {
         for (const [pieceType, quantity] of Object.entries(this.startingPieces)) {
             this.addPiece(pieceType, quantity);
         }
-        this.createPieceTray(); // Update the piece tray to reflect changes
+        //this.createPieceTray(); // Update the piece tray to reflect changes
 
         // Set up drag-and-drop functionality
         this.setupDragAndDrop();
@@ -165,6 +165,11 @@ class UI {
             this.pieceTray.add([pieceIcon, quantityText]); 
             piece.sprite.destroy(); 
         });
+    }
+
+    destroyPieceTray() {
+        this.pieceTray.destroy();
+        this.pieceTray = null;
     }
 
     setupDragAndDrop() {
@@ -365,8 +370,10 @@ class UI {
             // Adjust scale to counteract the zoom effect
             this.uiContainer.setScale(1 / this.scene.cameras.main.zoom);
     
-            // Re-draw piece tray
-            this.createPieceTray();
+            // Re-draw piece tray, if we're on the placement stage
+            if (this.scene.gameManager.stage.name == "placement") {
+                this.createPieceTray();
+            }
         }
     }
     

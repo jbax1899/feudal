@@ -11,10 +11,9 @@ class GameManager {
         { color: '42281B', name: 'darkbrown' }
     ];
 
-    constructor(scene, board, ui) {
+    constructor(scene, board) {
         this.scene = scene;
         this.board = board;
-        this.ui = ui;
         this.players = [new Player(this.scene, 1), 
                         new Player(this.scene, 2),
                         new Player(this.scene, 3),
@@ -70,6 +69,7 @@ class GameManager {
 
         if (this.stage.name === "placement") {
             // DEBUG - placement stage
+            // We're done rotating the board. Save the changes by updating board data, then re-drawing board
             // rotate board data
             const angle = this.scene.board.boardContainer.angle;
             let rotations = 0;
@@ -93,6 +93,14 @@ class GameManager {
             this.scene.board = new Board(this.scene);
             this.scene.board.create();
         }
+
+        if (this.stage.name === "play") {
+            // Remove piece tray
+            this.scene.ui.destroyPieceTray();
+        }
+
+        // Refresh UI
+        this.scene.ui.updateUIPosition();
     }
 
     turnBoard(direction) {

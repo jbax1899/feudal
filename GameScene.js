@@ -58,7 +58,7 @@ class GameScene extends Phaser.Scene {
             this.board.create();
 
             // Game manager
-            this.gameManager = new GameManager(this, this.board, this.ui);
+            this.gameManager = new GameManager(this, this.board);
             this.gameManager.create();
 
             // Start drawing UI
@@ -75,8 +75,9 @@ class GameScene extends Phaser.Scene {
         this.scale.on('resize', (gameSize) => {
             this.drawBackground();
             this.ui.updateUIPosition();
-            if (this.scene.board) {
-                this.scene.zoomMin = this.scene.board.minZoom();
+            if (this.board) {
+                console.log("hi")
+                this.zoomMin = this.board.minZoom();
             }
         });
     }
@@ -174,8 +175,11 @@ class GameScene extends Phaser.Scene {
             // Convert pointer position to world coordinates
             const worldPoint = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
 
-            // Check if the pointer is within the pieceTray
-            const isPointerOnPieceTray = this.ui.pieceTray.getBounds().contains(worldPoint.x, worldPoint.y);
+            // Check if the pointer is within the pieceTray (if its been made)
+            let isPointerOnPieceTray = false;
+            if (this.ui.pieceTray) {
+                isPointerOnPieceTray = this.ui.pieceTray.getBounds().contains(worldPoint.x, worldPoint.y);
+            }
 
             // Check if the pointer is within the board's container
             const isPointerOnBoard = this.board.boardContainer.getBounds().contains(worldPoint.x, worldPoint.y);
@@ -230,7 +234,11 @@ class GameScene extends Phaser.Scene {
             // Convert the pointer's coordinates to global coordinates
             const globalPointer = this.ui.cameraToGlobal(pointer.x, pointer.y);
             // Check if the mouse is over the piece tray
-            if (this.ui.trayBounds.contains(globalPointer.x, globalPointer.y)) {
+            let overPieceTray = false;
+            if (this.ui.pieceTray) {
+                overPieceTray = this.ui.trayBounds.contains(globalPointer.x, globalPointer.y);
+            }
+            if (overPieceTray) {
                 // Get the pointer's coordinates in global space
                 const { x: globalX, y: globalY } = this.ui.cameraToGlobal(pointer.x, pointer.y);
 
