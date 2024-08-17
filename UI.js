@@ -29,6 +29,8 @@ class UI {
         this.playerNumber = 0; // DEBUG
         this.trayScrollOffset = 0;
         this.highlightedTile = null;
+        this.rotateClockwiseButton = null;
+        this.rotateCounterclockwiseButton = null;
     }
 
     create() {
@@ -68,6 +70,44 @@ class UI {
     update() {
         for (const notification of this.notifications) {
             notification.update();
+        }
+    }
+
+    createRotateIcons() {
+        // Have we made the arrows yet?
+        if (this.rotateCounterclockwiseButton == null) {
+            this.rotateCounterclockwiseButton = this.scene.add.image(0, 0, 'arrow_counterclockwise').setInteractive();
+            this.rotateClockwiseButton = this.scene.add.image(0, 0, 'arrow_clockwise').setInteractive();
+            this.uiContainer.add(this.rotateCounterclockwiseButton);
+            this.uiContainer.add(this.rotateClockwiseButton);
+        
+            this.rotateClockwiseButton.setScale(1);
+            this.rotateCounterclockwiseButton.setScale(1);
+            
+            this.rotateClockwiseButton.on('pointerdown', () => {
+                this.scene.gameManager.turnBoard(0);
+            });
+    
+            this.rotateCounterclockwiseButton.on('pointerdown', () => {
+                this.scene.gameManager.turnBoard(1);
+            });
+        }
+        // Update position
+        const camera = this.scene.cameras.main;
+        this.rotateCounterclockwiseButton.x = camera.width * (1/3);
+        this.rotateCounterclockwiseButton.y = camera.height - 100;
+        this.rotateClockwiseButton.x = camera.width * (2/3);
+        this.rotateClockwiseButton.y = camera.height - 100;
+    }
+
+    destroyRotateIcons() {
+        if (this.rotateCounterclockwiseButton !== null) {
+            this.rotateCounterclockwiseButton.destroy();
+            this.rotateCounterclockwiseButton = null;
+        }
+        if (this.rotateClockwiseButton !== null) {
+            this.rotateClockwiseButton.destroy();
+            this.rotateClockwiseButton = null;
         }
     }
 
@@ -369,6 +409,11 @@ class UI {
     
             // Adjust scale to counteract the zoom effect
             this.uiContainer.setScale(1 / this.scene.cameras.main.zoom);
+
+            // Draw board rotate arrows, if we're on the positioning stage
+            if (this.scene.gameManager.stage.name == "positioning") {
+                    this.createRotateIcons();
+            }
     
             // Re-draw piece tray, if we're on the placement stage
             if (this.scene.gameManager.stage.name == "placement") {

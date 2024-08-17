@@ -67,6 +67,14 @@ class GameManager {
             this.scene.ui.addNotification("Advancing to " + this.stage.name + " stage");
         }
 
+        if (this.stage.name === "positioning") {
+
+        }
+
+        if (this.stage.name === "obscure") {
+            this.scene.ui.destroyRotateIcons();
+        }
+
         if (this.stage.name === "placement") {
             // DEBUG - placement stage
             // We're done rotating the board. Save the changes by updating board data, then re-drawing board

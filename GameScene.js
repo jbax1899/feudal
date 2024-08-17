@@ -23,6 +23,8 @@ class GameScene extends Phaser.Scene {
         this.load.image('background', 'img/menu-landscape.svg');
         // UI
         this.load.image('menubutton', 'img/menubutton.svg');
+        this.load.image('arrow_clockwise', 'img/arrow_clockwise.png');
+        this.load.image('arrow_counterclockwise', 'img/arrow_counterclockwise.png');
         // Pieces
         this.load.image('piece_blank', 'img/piece_blank.png');
         this.load.image('piece_king', 'img/piece_king.png');
@@ -76,8 +78,8 @@ class GameScene extends Phaser.Scene {
             this.drawBackground();
             this.ui.updateUIPosition();
             if (this.board) {
-                console.log("hi")
                 this.zoomMin = this.board.minZoom();
+                this.board.centerCamera();
             }
         });
     }
