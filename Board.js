@@ -11,6 +11,7 @@ class Board {
         this.selectedPlayer = 1;
         this.castleRotation = 0;
         this.castleRotationLast = 0;
+        this.obfuscation = null;
         this.debug = true;
     }
 
@@ -220,17 +221,22 @@ class Board {
         if (!this.isCoordinate(boardX, boardY)) {
             return `Cannot place piece - Invalid board coordinates: (${boardX}, ${boardY})`;
         }
+        // Cannot place on obscured enemy's side
+        if (this.obfuscation !== null
+            && boardY < Math.ceil(this.scene.boardData.tiles[0].length / 2)) {
+            return `Cannot place piece on enemy's side`;
+        }
         // Cannot place any piece on a mountain
         if (this.getTile(boardX, boardY) === 3) {
-            return `Cannot place piece on mountain: (${boardX}, ${boardY})`;
+            return `Cannot place piece on mountain`;
         }
         // Cannot place mounted units on rough
         if (this.getTile(boardX, boardY) === 2 && Piece.moves[Piece.types.indexOf(type)].isMounted) {
-            return `Cannot place mounted piece on rough terrain: (${boardX}, ${boardY})`;
+            return `Cannot place mounted piece on rough terrain`;
         }
         // Ensure space is empty
         if (this.getPieces(boardX, boardY)) {
-            return `Cannot place piece - Space is already occupied: (${boardX}, ${boardY})`; // Space is already occupied
+            return `Cannot place piece - Space is already occupied`;
         }
 
         //All checks passed, must be legal
@@ -589,7 +595,31 @@ class Board {
             this.scene.ui.updateUIPosition();
         }
     }
-    
+
+    obscure() {
+        // Get the dimensions of the board
+        const boardData = this.scene.boardData;
+        const numRows = boardData.tiles.length;
+        const numCols = boardData.tiles[0].length;
+
+        // Calculate the screen coordinates of the top-left and bottom-right corners
+        const topLeft = this.boardToScreen(0, 0);                                        // Top-left corner (row 0, col 0)
+        const bottomRight = this.boardToScreen(numRows, Math.floor(numCols / 2));    // Bottom-right corner for top half
+
+        // Draw a semi-transparent gray rectangle over the top half of the board
+        this.obfuscation = this.scene.add.graphics().fillStyle(0x808080, 0.7);
+        const width = bottomRight.x - topLeft.x;
+        const height = bottomRight.y - topLeft.y;
+        this.obfuscation.fillRect(topLeft.x, topLeft.y, width, height);
+        this.obfuscation.setDepth(100); // Depth higher than other elements
+    }
+
+    unobscure() {
+        if (this.obfuscation !== null) {
+            this.obfuscation.destroy();
+            this.obfuscation = null;
+        }
+    }
 }
 
 export default Board;

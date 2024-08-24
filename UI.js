@@ -17,14 +17,14 @@ class UI {
         this.pieceIcons = {};
         this.startingPieces = {
             'king': 1,
-            'prince': 10,
-            'duke': 10,
-            'knight': 20,
-            'sergeant': 20,
-            'pikeman': 40,
-            'squire': 10,
-            'archer': 10,
-            'castleInner': 10
+            'prince': 1,
+            'duke': 1,
+            'knight': 2,
+            'sergeant': 2,
+            'pikeman': 4,
+            'squire': 1,
+            'archer': 1,
+            'castleInner': 1
         };
         this.playerNumber = 0; // DEBUG
         this.trayScrollOffset = 0;
@@ -254,19 +254,14 @@ class UI {
                 && !this.trayBounds.contains(worldPoint.x, worldPoint.y)
                 ) {
                     const { boardX, boardY } = this.scene.board.screenToBoard(worldPoint.x, worldPoint.y); // Convert screen coordinates to board coordinates
-                    // If highlighted tile is red, placement is not legal
-                    if ((this.highlightedTile.color && this.highlightedTile.color == 0xFF0000) 
-                        || (this.highlightedTile.color2 && this.highlightedTile.color2 == 0xFF0000)) {
-                            this.originalPiece.setAlpha(1);
-                    }
-                    // Try adding piece to board
-                    else if (this.scene.board.addPiece(boardX, boardY, pieceType, this.playerNumber)) {
-                        // 
-                        // Decrement available pieces on successful placement
-                        this.availablePieces[pieceType] -= 1;
-                        this.createPieceTray();
+                    const isLegal = this.scene.board.isLegalPlacement(boardX, boardY, pieceType);
+                    if (isLegal === null) {
+                        this.scene.board.addPiece(boardX, boardY, pieceType, this.playerNumber)
+                         this.availablePieces[pieceType] -= 1; // Decrement available pieces on successful placement
+                         this.createPieceTray();
                     } else {
-                        this.originalPiece.setAlpha(1); // Failed legal check within addPiece
+                        this.scene.ui.addNotification(isLegal);
+                        this.originalPiece.setAlpha(1);
                     }
                 } else {
                     this.originalPiece.setAlpha(1); // Piece was not dropped on the board
@@ -490,14 +485,17 @@ class UI {
         };
     
         // Add buttons to the dropdown container with borders and actions
-        this.dropdownButton1 = createTextWithBorder(0, 0, 'Settings', () => {
-            console.log('Settings button clicked');
-        });
-        this.dropdownButton2 = createTextWithBorder(0, buttonSize * 0.4 + buttonSpacing, 'Exit to Menu', () => {
+        this.dropdownButton1 = createTextWithBorder(0, 0, 'Exit to Menu', () => {
             this.scene.scene.switch('MainMenu');
             this.scene.scene.stop('GameScene');
         });
-        this.dropdownButton3 = createTextWithBorder(0, buttonSize * 0.8 + buttonSpacing * 2, 'Visit Site', () => {
+        this.dropdownButton3 = createTextWithBorder(0, buttonSize * 0.4 + buttonSpacing, 'Settings', () => {
+            this.addNotification("Not implemented");
+        });
+        this.dropdownButton2 = createTextWithBorder(0, buttonSize * 0.8 + buttonSpacing * 2, 'Help', () => {
+            this.addNotification("Not implemented");
+        });
+        this.dropdownButton4 = createTextWithBorder(0, buttonSize * 1.2 + buttonSpacing * 3, 'Visit Site', () => {
             window.open('https://github.com/jbax1899/feudal')
         });
     

@@ -24,10 +24,9 @@ class GameManager {
         this.stages = [
             { number: 0, name: "cointoss" },
             { number: 1, name: "positioning" },
-            { number: 2, name: "obscure" },
-            { number: 3, name: "placement" },
-            { number: 4, name: "play" },
-            { number: 5, name: "gameover" }
+            { number: 2, name: "placement" },
+            { number: 3, name: "play" },
+            { number: 4, name: "gameover" }
         ];
         this.stage = this.stages[0];
         this.flipWinner;
@@ -71,12 +70,10 @@ class GameManager {
 
         }
 
-        if (this.stage.name === "obscure") {
-            this.scene.ui.destroyRotateIcons();
-        }
-
         if (this.stage.name === "placement") {
             // DEBUG - placement stage
+            // Destroy board rotation icons
+            this.scene.ui.destroyRotateIcons();
             // We're done rotating the board. Save the changes by updating board data, then re-drawing board
             // rotate board data
             const angle = this.scene.board.boardContainer.angle;
@@ -100,11 +97,15 @@ class GameManager {
             this.scene.board.boardContainer.destroy();
             this.scene.board = new Board(this.scene);
             this.scene.board.create();
+            // Obscure enemy side
+            this.scene.board.obscure();
         }
 
         if (this.stage.name === "play") {
             // Remove piece tray
             this.scene.ui.destroyPieceTray();
+            // Unobscure enemy side
+            this.scene.board.unobscure();
         }
 
         // Refresh UI
