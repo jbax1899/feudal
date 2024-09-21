@@ -16,7 +16,7 @@ class Notification {
         this.notificationContainer = scene.add.container(this.camera.centerX, this.startY);
 
         // Create the semi-transparent background rectangle with player's color
-        const bgColor = scene.gameManager.playerColors[scene.ui.playerNumber].color;
+        const bgColor = scene.gameManager.playerColors[this.scene.player.playerNumber].color;
         this.background = scene.add.rectangle(0, 0, this.width, this.height, "0x" + bgColor, 0.9);
         this.background.setOrigin(0.5, 0.5); // Center the rectangle
 

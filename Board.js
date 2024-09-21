@@ -8,7 +8,7 @@ class Board {
         this.pieces = [];
         this.moveCircles = [];
         this.selectedPiece = null;
-        this.selectedPlayer = 1;
+        this.selectedPlayer = this.scene.player.playerNumber;
         this.castleRotation = 0;
         this.castleRotationLast = 0;
         this.obfuscation = null;
@@ -32,58 +32,76 @@ class Board {
         // Key listeners
         this.pKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
         this.rKey = this.scene.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R);
-        // General keydown listener
-        this.scene.input.keyboard.on('keydown', (event) => {
+        
+        // General keyup listener
+        this.scene.input.keyboard.off('keyup'); // Remove old listener if it exists (when we re-create the board during setup)
+        this.scene.input.keyboard.on('keyup', (event) => {
             const key = event.key; // Get the pressed key
             const keyNumber = parseInt(key); // Convert key to a number
 
-            // DEBUG - change piece type for creation
-            if (!isNaN(keyNumber)) {
-                this.selectPiece(keyNumber);
-            }
+            // DEBUG
+            if (this.debug) {
+                // Change piece type for creation
+                if (!isNaN(keyNumber)) {
+                    this.selectPiece(keyNumber);
+                }
 
-            // DEBUG - change player for piece creation
-            if (key === '=') {
-                if (this.selectedPlayer < this.scene.gameManager.playerColors.length) {
-                    this.selectedPlayer++;
+                // Change player for piece creation
+                if (key === '=' || key === '-') {
+                    let changed = false;
+                    if (key === '=') {
+                        if (this.selectedPlayer < this.scene.gameManager.playerColors.length - 1) {
+                            this.selectedPlayer++;
+                            changed = true;
+                        }           
+                    }
+                    if (key === '-') {
+                        if (this.selectedPlayer > 0) {
+                            this.selectedPlayer--;
+                            changed = true;
+                        }
+                    }
+                    if (changed) {
+                        this.scene.player.playerNumber = this.selectedPlayer; // Change player
+                        this.scene.ui.addNotification("[DEBUG] Swapped to player " + this.selectedPlayer);
+                        this.scene.ui.updateUIPosition(); // to update piece tray if its being drawn
+                        console.log("Selected player: " + this.selectedPlayer);
+                    } else {
+                        this.scene.ui.addNotification("[DEBUG] Cannot swap to player: Invalid");
+                        console.log("Cannot swap to player: Invalid");
+                    }
                 }
-                console.log("Selected player: " + this.selectedPlayer);
-            }
-            if (key === '-') {
-                if (this.selectedPlayer > 1) {
-                    this.selectedPlayer--;
-                }
-                console.log("Selected player: " + this.selectedPlayer);
-            }
 
-            // DEBUG - change castle rotation for creation
-            if (key === 'ArrowLeft') {
-                this.castleRotationLast = this.castleRotation;
-                if (this.castleRotation > 0) {
-                    this.castleRotation--;
-                } else {
-                    this.castleRotation = 3;
+                // Change castle rotation for creation
+                if (key === 'ArrowLeft') {
+                    this.castleRotationLast = this.castleRotation;
+                    if (this.castleRotation > 0) {
+                        this.castleRotation--;
+                    } else {
+                        this.castleRotation = 3;
+                    }
+                    this.scene.ui.updateDragging();
+                    console.log("Castle rotation: " + this.castleRotation);
                 }
-                this.scene.ui.updateDragging();
-                console.log("Castle rotation: " + this.castleRotation);
-            }
-            if (key === 'ArrowRight') {
-                this.castleRotationLast = this.castleRotation;
-                if (this.castleRotation < 3) {
-                    this.castleRotation++;
-                } else {
-                    this.castleRotation = 0;
+                if (key === 'ArrowRight') {
+                    this.castleRotationLast = this.castleRotation;
+                    if (this.castleRotation < 3) {
+                        this.castleRotation++;
+                    } else {
+                        this.castleRotation = 0;
+                    }
+                    this.scene.ui.updateDragging();
+                    console.log("Castle rotation: " + this.castleRotation);
                 }
-                this.scene.ui.updateDragging();
-                console.log("Castle rotation: " + this.castleRotation);
-            }
-            if (key === ' ') {
-                // Center screen on board
-                this.centerCamera();
+                if (key === ' ') {
+                    // Center screen on board
+                    this.centerCamera();
+                }
             }
         });
 
         // Event listener for clicks. Was this.boardContainer, but only worked for top-left quarter of board?
+        this.scene.input.off('pointerdown'); // Remove old listener if it exists (when we re-create the board during setup)
         this.scene.input.on('pointerdown', (pointer) => {
             // Left-click
             if (pointer.leftButtonDown()) {
@@ -93,19 +111,41 @@ class Board {
                 // Convert world coordinates to board coordinates
                 const {boardX, boardY} = this.screenToBoard(worldPoint.x, worldPoint.y);
                 
-                // Check if a piece is selected, and the clicked position contains a move circle
-                if (this.selectedPiece != null && this.isMoveCircle(boardX, boardY)) {
-                    // Move the selected piece to the clicked position
-                    this.movePiece(this.scene.board.selectedPiece, boardX, boardY);
-                    this.deselect();
-                }
-                
                 // DEBUG - piece creation on P+left click
                 if (this.pKey.isDown) {
                     this.addPiece(boardX, boardY, this.pieceSelection, this.selectedPlayer, this.castleRotation);
                 }
                 if (this.rKey.isDown) {
                     this.removePiece(boardX, boardY);
+                }
+
+                // Check if a piece is selected
+                if (this.selectedPiece !== null) {
+                    if (this.debug) {
+                        let piece = this.selectedPiece;
+                        console.log(`Selected piece: ` + piece.typeName + ", " 
+                                    + piece.pos.x + "x" + piece.pos.y + ", player " + piece.playerNumber);
+                    }
+                    // Check if we own that piece
+                    if (this.selectedPiece.playerNumber === this.scene.player.playerNumber) {
+                        if (this.debug) {
+                            console.log("We control that piece");
+                        }
+                        //If we're in the play stage
+                        if (this.scene.gameManager.stage.name === "play") {
+                            // Check if the clicked position contains a move circle
+                            if (this.isMoveCircle(boardX, boardY)) {
+                                // Handle captures
+                                this.removePiece(boardX, boardY); // ignores castles
+                                // Move the selected piece to the clicked position
+                                this.movePiece(this.scene.board.selectedPiece, boardX, boardY);
+                            }
+                        }
+                    } else {
+                        if (this.debug) {
+                            console.log("We do not control that piece");
+                        }
+                    }
                 }
             }
             // Right-click 
@@ -330,20 +370,23 @@ class Board {
         }
     
         if (!pieceToRemove) {
-            //console.error(`No enemy piece found at (${boardX}, ${boardY})`);
+            console.warn(`Tried to remove enemy piece at empty spot (${boardX}, ${boardY})`);
             return false;
         }
     
         // Ensure we are removing the correct piece
         const pieceIndex = this.pieces.indexOf(pieceToRemove);
         if (pieceIndex !== -1) {
+            console.log("hi!")
             // Remove the piece sprite and remove it from the array
             this.pieces[pieceIndex].sprite.destroy();
             this.pieces.splice(pieceIndex, 1);
-            // console.log(`Removed piece from (${boardX}, ${boardY})`);
+            if (this.debug) {
+                console.log(`Removed piece from (${boardX}, ${boardY})`);
+            }
             return true;
         } else {
-            console.error(`Piece not found in the pieces array.`);
+            console.warn(`Tried to remove a piece not found in the pieces array`);
             return false;
         }
     }
@@ -448,9 +491,6 @@ class Board {
             graphics.strokeCircle(x, y, (this.tileSize / 2) - thickness);
             graphics.setInteractive(new Phaser.Geom.Circle(x, y, (this.tileSize / 2) - thickness), Phaser.Geom.Circle.Contains);
             graphics.setDepth(10);
-            graphics.on('pointerdown', () => {
-                this.capturePiece(this.selectedPiece, boardX, boardY);
-            });
             graphics.boardX = boardX;
             graphics.boardY = boardY;
             this.moveCircles.push(graphics); // Store the graphics reference
@@ -459,9 +499,6 @@ class Board {
             const circle = this.scene.add.circle(x, y, this.tileSize / 7, 0x00ff00, 0.5); // Green circle with 50% alpha
             circle.setInteractive();
             circle.setDepth(10);
-            circle.on('pointerdown', () => {
-                this.movePiece(this.selectedPiece, boardX, boardY);
-            });
             circle.boardX = boardX;
             circle.boardY = boardY;
             this.moveCircles.push(circle); // Store the circle reference
@@ -546,7 +583,9 @@ class Board {
         piece.pos.x = targetX;
         piece.pos.y = targetY;
         this.deselect();
-        //console.log(`Moved ${piece.typeName} piece to: ${targetX}, ${targetY}`);
+        if (this.debug) {
+            console.log(`Moved ${piece.typeName} piece to: ${targetX}, ${targetY}`);
+        }
     }
 
     capturePiece(piece, boardX, boardY) {

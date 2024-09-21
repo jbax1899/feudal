@@ -26,7 +26,6 @@ class UI {
             'archer': 1,
             'castleInner': 1
         };
-        this.playerNumber = 0; // DEBUG
         this.trayScrollOffset = 0;
         this.highlightedTile = null;
         this.rotateClockwiseButton = null;
@@ -131,7 +130,7 @@ class UI {
         const startY = Math.round(camera.height - pieceHeight - (padding * 3)); // Position at the bottom
 
         // Draw a semi-transparent rectangle for tray background with the player's color
-        const playerColorHex = this.scene.gameManager.playerColors[this.playerNumber].color;
+        const playerColorHex = this.scene.gameManager.playerColors[this.scene.player.playerNumber].color;
         const playerColor = Phaser.Display.Color.HexStringToColor(playerColorHex).color;
         this.trayRectangle = new Phaser.Geom.Rectangle(0, 0, adjustedWidth, trayHeight);
         const backgroundGraphics = this.scene.add.graphics()
@@ -180,11 +179,11 @@ class UI {
             pieceIcon.displayHeight = pieceHeight;
     
             // Recolor and set texture
-            const piece = new Piece(this.scene, 0, 0, pieceType, this.playerNumber);
+            const piece = new Piece(this.scene, 0, 0, pieceType, this.scene.player.playerNumber);
             piece.recolorSprite();
     
-            if (this.scene.textures.exists('recolored_piece_' + pieceType + '_' + this.playerNumber)) {
-                pieceIcon.setTexture('recolored_piece_' + pieceType + '_' + this.playerNumber);
+            if (this.scene.textures.exists('recolored_piece_' + pieceType + '_' + this.scene.player.playerNumber)) {
+                pieceIcon.setTexture('recolored_piece_' + pieceType + '_' + this.scene.player.playerNumber);
             }
     
             // Display the quantity above the icon
@@ -226,7 +225,7 @@ class UI {
                 // Create a copy of the piece for dragging
                 // If dragging a castle, get the full sprite
                 if (pieceType === 'castleInner') {
-                    const tempCastlePiece = new Piece(this.scene, globalPointer.x, globalPointer.y, 'castleBoth', this.playerNumber);
+                    const tempCastlePiece = new Piece(this.scene, globalPointer.x, globalPointer.y, 'castleBoth', this.scene.player.playerNumber);
                     this.draggedPiece = tempCastlePiece.sprite
                         .setOrigin(0.25, 0.5);
                 } else {
@@ -256,7 +255,7 @@ class UI {
                     const { boardX, boardY } = this.scene.board.screenToBoard(worldPoint.x, worldPoint.y); // Convert screen coordinates to board coordinates
                     const isLegal = this.scene.board.isLegalPlacement(boardX, boardY, pieceType);
                     if (isLegal === null) {
-                        this.scene.board.addPiece(boardX, boardY, pieceType, this.playerNumber)
+                        this.scene.board.addPiece(boardX, boardY, pieceType, this.scene.player.playerNumber)
                          this.availablePieces[pieceType] -= 1; // Decrement available pieces on successful placement
                          this.createPieceTray();
                     } else {
@@ -407,7 +406,7 @@ class UI {
 
             // Draw board rotate arrows, if we're on the positioning stage
             if (this.scene.gameManager.stage.name == "positioning") {
-                    this.createRotateIcons();
+                this.createRotateIcons();
             }
     
             // Re-draw piece tray, if we're on the placement stage

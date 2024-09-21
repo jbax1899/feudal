@@ -1,3 +1,4 @@
+import Player from './Player.js';
 import Board from './Board.js';
 import GameManager from './GameManager.js';
 import UI from './UI.js';
@@ -45,6 +46,9 @@ class GameScene extends Phaser.Scene {
         this.load.image('mountain', 'img/mountain.png');
         // Finished loading assets
         this.load.on('complete', () => {
+            // Load player
+            this.player = new Player(this, 0); // Player(scene, playerNumber)
+
             // Draw background
             this.drawBackground();
 

@@ -71,16 +71,23 @@ class Piece {
             const priorSelected = this.scene.board.selectedPiece;
             // If any piece is selected, deselect it
             if (this.scene.board.selectedPiece !== null) {
-                //console.log(`${Piece.types[this.scene.board.selectedPiece.type]} piece deselected (p` + priorSelected.playerNumber + ')');
+                if (this.scene.board.debug) {
+                    console.log(`${Piece.types[this.scene.board.selectedPiece.type]} piece deselected (p` + priorSelected.playerNumber + ')');
+                }
                 this.scene.board.deselect();
             }
-            // Select this piece, if it wasn't already
-            // Cannot select castle pieces
-            if (priorSelected !== this 
-                && this.typeName !== 'castleInner' && this.typeName !== 'castleOuter') {
-                this.scene.board.selectedPiece = this;
-                this.scene.board.showMoves(this);
-                //console.log(`${Piece.types[this.type]} piece selected (p` + this.playerNumber + ')');
+            //If we're in the play stage
+            if (this.scene.gameManager.stage.name === "play") {
+                // Select this piece, if it wasn't already
+                // Cannot select castle pieces
+                if (priorSelected !== this 
+                    && this.typeName !== 'castleInner' && this.typeName !== 'castleOuter') {
+                    this.scene.board.selectedPiece = this;
+                    this.scene.board.showMoves(this);
+                    if (this.scene.board.debug) {
+                        console.log(`${Piece.types[this.type]} piece selected (p` + this.playerNumber + ')');
+                    }
+                }
             }
         });
     }
