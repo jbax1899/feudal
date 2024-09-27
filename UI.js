@@ -110,6 +110,30 @@ class UI {
         }
     }
 
+    createEndTurn() {
+        // Have we made the arrows yet?
+        if (this.endTurnButton == null) {
+            this.endTurnButton = this.scene.add.image(0, 0, 'end_turn').setInteractive();
+            this.endTurnButton.setScale(1);
+            this.uiContainer.add(this.endTurnButton);
+
+            this.endTurnButton.on('pointerdown', () => {
+                this.scene.gameManager.endTurn();
+            });
+        }
+        // Update position
+        const camera = this.scene.cameras.main;
+        this.endTurnButton.x = camera.width * 0.5;
+        this.endTurnButton.y = camera.height - 100;
+    }
+
+    destroyEndTurn() {
+        if (this.endTurnButton !== null) {
+            this.endTurnButton.destroy();
+            this.endTurnButton = null;
+        }
+    }
+
     addPiece(pieceType, count) {
         if (!this.availablePieces[pieceType]) {
             this.availablePieces[pieceType] = 0;
@@ -536,8 +560,8 @@ class UI {
         this.uiContainer.add([this.menuButton, this.dropdownContainer]);
     }
 
-    addNotification(text) {
-        this.notifications.push(new Notification(this.scene, text));
+    addNotification(text, color) {
+        this.notifications.push(new Notification(this.scene, text, color));
     }
 }
 

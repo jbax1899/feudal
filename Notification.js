@@ -1,5 +1,5 @@
 class Notification {
-    constructor(scene, text) {
+    constructor(scene, text, color) {
         this.scene = scene;
         this.camera = scene.cameras.main;
         this.container = this.scene.ui.notificationContainer;
@@ -15,9 +15,15 @@ class Notification {
         // Create the container for the notification
         this.notificationContainer = scene.add.container(this.camera.centerX, this.startY);
 
-        // Create the semi-transparent background rectangle with player's color
-        const bgColor = scene.gameManager.playerColors[this.scene.player.playerNumber].color;
-        this.background = scene.add.rectangle(0, 0, this.width, this.height, "0x" + bgColor, 0.9);
+        // If a color was supplied use that, otherwise use the current player's color
+        if (color != undefined) {
+            this.bgColor = color;
+        } else {
+            this.bgColor = scene.gameManager.playerColors[this.scene.player.playerNumber].color;
+        }
+        
+        // Create the semi-transparent background rectangle
+        this.background = scene.add.rectangle(0, 0, this.width, this.height, "0x" + this.bgColor, 0.9);
         this.background.setOrigin(0.5, 0.5); // Center the rectangle
 
         // Create the notification text

@@ -26,6 +26,7 @@ class GameScene extends Phaser.Scene {
         this.load.image('menubutton', 'img/menubutton.svg');
         this.load.image('arrow_clockwise', 'img/arrow_clockwise.png');
         this.load.image('arrow_counterclockwise', 'img/arrow_counterclockwise.png');
+        this.load.image('end_turn', 'img/end_turn.png');
         // Pieces
         this.load.image('piece_blank', 'img/piece_blank.png');
         this.load.image('piece_king', 'img/piece_king.png');

@@ -118,33 +118,19 @@ class Board {
                 if (this.rKey.isDown) {
                     this.removePiece(boardX, boardY);
                 }
-
-                // Check if a piece is selected
-                if (this.selectedPiece !== null) {
-                    if (this.debug) {
-                        let piece = this.selectedPiece;
-                        console.log(`Selected piece: ` + piece.typeName + ", " 
-                                    + piece.pos.x + "x" + piece.pos.y + ", player " + piece.playerNumber);
-                    }
-                    // Check if we own that piece
-                    if (this.selectedPiece.playerNumber === this.scene.player.playerNumber) {
-                        if (this.debug) {
-                            console.log("We control that piece");
-                        }
-                        //If we're in the play stage
-                        if (this.scene.gameManager.stage.name === "play") {
-                            // Check if the clicked position contains a move circle
-                            if (this.isMoveCircle(boardX, boardY)) {
-                                // Handle captures
-                                this.removePiece(boardX, boardY); // ignores castles
-                                // Move the selected piece to the clicked position
-                                this.movePiece(this.scene.board.selectedPiece, boardX, boardY);
-                            }
-                        }
-                    } else {
-                        if (this.debug) {
-                            console.log("We do not control that piece");
-                        }
+                
+                //
+                // Piece movement
+                //
+                // Check if a piece was selected, and that we're in the play stage
+                if (this.selectedPiece !== null 
+                    && this.scene.gameManager.stage.name === "play") {
+                    // Check if the clicked position contains a move circle
+                    if (this.isMoveCircle(boardX, boardY)) {
+                        // Handle captures
+                        this.removePiece(boardX, boardY); // ignores castles
+                        // Move the selected piece to the clicked position
+                        this.movePiece(this.scene.board.selectedPiece, boardX, boardY);
                     }
                 }
             }
@@ -369,15 +355,14 @@ class Board {
             }
         }
     
+        // No pieces to remove, exit
         if (!pieceToRemove) {
-            console.warn(`Tried to remove enemy piece at empty spot (${boardX}, ${boardY})`);
             return false;
         }
     
         // Ensure we are removing the correct piece
         const pieceIndex = this.pieces.indexOf(pieceToRemove);
         if (pieceIndex !== -1) {
-            console.log("hi!")
             // Remove the piece sprite and remove it from the array
             this.pieces[pieceIndex].sprite.destroy();
             this.pieces.splice(pieceIndex, 1);

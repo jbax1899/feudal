@@ -30,6 +30,8 @@ class GameManager {
         ];
         this.stage = this.stages[0];
         this.flipWinner;
+        this.turn = 0; // tracks turn count across all players
+        this.playerTurn = 0; // tracks which player's turn it is
     }
 
     create() {
@@ -60,10 +62,13 @@ class GameManager {
     }
 
     advanceStage() {
-        if (this.stage.number < this.stages.length) {
+        if (this.stage.number + 1 < this.stages.length) {
             this.stage = this.stages[this.stage.number + 1];
             console.log("Advancing to " + this.stage.name + " stage");
             this.scene.ui.addNotification("Advancing to " + this.stage.name + " stage");
+        } else {
+            console.warn("Cannot progress stage: Reached end");
+            return;
         }
 
         if (this.stage.name === "positioning") {
@@ -106,6 +111,12 @@ class GameManager {
             this.scene.ui.destroyPieceTray();
             // Unobscure enemy side
             this.scene.board.unobscure();
+            // Create end turn button
+            this.scene.ui.createEndTurn();
+        }
+
+        if (this.stage.name === "gameover") {
+            this.scene.ui.addNotification("Game over!", "ff0000");
         }
 
         // Refresh UI
@@ -145,6 +156,35 @@ class GameManager {
                 this.isRotatingBoard = false;
             }
         });
+    }
+
+    endTurn() {
+        // Player X has ended their turn
+        this.scene.ui.addNotification(
+            "Player " + this.playerTurn + " has ended their turn",
+            this.playerToColorCode(this.playerTurn)
+        );
+
+        this.turn++;
+        if (this.turn % this.players.length == 0) {
+            this.playerTurn = 0;
+        } else {
+            this.playerTurn++;
+        }
+
+        // Player Y's turn
+        this.scene.ui.addNotification(
+            "Player " + this.playerTurn + "'s turn",
+            this.playerToColorCode(this.playerTurn)
+        );
+    }
+
+    playerToColorCode(player) {
+        return this.playerColors[player].color;
+    }
+
+    playerToColorName(player) {
+        return this.playerColors[player].name;
     }
 }
 

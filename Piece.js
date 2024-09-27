@@ -69,15 +69,24 @@ class Piece {
         this.sprite.setInteractive();
         this.sprite.on('pointerdown', () => {
             const priorSelected = this.scene.board.selectedPiece;
-            // If any piece is selected, deselect it
+            // If any piece is selected already, deselect it
             if (this.scene.board.selectedPiece !== null) {
                 if (this.scene.board.debug) {
                     console.log(`${Piece.types[this.scene.board.selectedPiece.type]} piece deselected (p` + priorSelected.playerNumber + ')');
                 }
                 this.scene.board.deselect();
             }
-            //If we're in the play stage
-            if (this.scene.gameManager.stage.name === "play") {
+            // Select this piece
+            if (this.scene.board.debug) {
+                console.log(`Selected piece: ` + this.typeName + ", " 
+                            + this.pos.x + "x" + this.pos.y + ", player " + this.playerNumber);
+            }
+            //
+            // Piece Movement
+            //
+            //If we're in the play stage, AND its our turn
+            if (this.scene.gameManager.stage.name === "play"
+                && this.scene.gameManager.playerTurn === this.playerNumber) {
                 // Select this piece, if it wasn't already
                 // Cannot select castle pieces
                 if (priorSelected !== this 
