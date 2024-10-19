@@ -16,6 +16,7 @@ class GameScene extends Phaser.Scene {
         this.startY = 0;
         this.zoomMin = 0.5;
         this.zoomMax = 2;
+        this.gameManager, this.board, this.player, this.ui;
     }
 
     preload() {
@@ -47,9 +48,6 @@ class GameScene extends Phaser.Scene {
         this.load.image('mountain', 'img/mountain.png');
         // Finished loading assets
         this.load.on('complete', () => {
-            // Load player
-            this.player = new Player(this, 0); // Player(scene, playerNumber)
-
             // Draw background
             this.drawBackground();
 
@@ -60,13 +58,13 @@ class GameScene extends Phaser.Scene {
                 return;
             }
 
-            // Create board
-            this.board = new Board(this);
-            this.board.create();
-
             // Game manager
             this.gameManager = new GameManager(this, this.board);
             this.gameManager.create();
+
+            // Create board
+            this.board = new Board(this);
+            this.board.create();
 
             // Start drawing UI
             this.ui = new UI(this);
@@ -278,6 +276,25 @@ class GameScene extends Phaser.Scene {
             right: Phaser.Input.Keyboard.KeyCodes.D
         });
     }
+
+    restartGame() {
+        console.log("Restarting the game...");
+    
+        // Clean up resources
+        if (this.gameManager) this.gameManager.destroy();
+        if (this.board) this.board.destroy();
+        if (this.ui) this.ui.destroy();
+        if (this.player) this.player.destroy();
+    
+        // Reset any global or game state variables
+        this.isDragging = false;
+        this.startX = 0;
+        this.startY = 0;
+    
+        // Restart the GameScene
+        this.scene.start('GameScene');
+    }
+    
 }
 
 export default GameScene;

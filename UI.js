@@ -4,6 +4,12 @@ import Notification from './Notification.js';
 class UI {
     constructor(scene) {
         this.scene = scene;
+        this.gameManager = this.scene.gameManager;
+
+        this.player = this.gameManager.mainPlayer;
+        this.playerNumber = this.gameManager.mainPlayerNumber;
+        this.availablePieces = this.gameManager.players[this.playerNumber].hand; // our "hand" of pieces
+
         this.colors = {
             lightteal: 0x66cccc,
             teal: 0x008080,
@@ -13,19 +19,7 @@ class UI {
         this.notificationContainer = scene.add.container(0, 0);
         this.notifications = [];
         this.pieceTray = null;
-        this.availablePieces = {};
         this.pieceIcons = {};
-        this.startingPieces = {
-            'king': 1,
-            'prince': 1,
-            'duke': 1,
-            'knight': 2,
-            'sergeant': 2,
-            'pikeman': 4,
-            'squire': 1,
-            'archer': 1,
-            'castleInner': 1
-        };
         this.trayScrollOffset = 0;
         this.highlightedTile = null;
         this.rotateClockwiseButton = null;
@@ -37,7 +31,7 @@ class UI {
         this.createUI();
 
         // Add starting pieces
-        for (const [pieceType, quantity] of Object.entries(this.startingPieces)) {
+        for (const [pieceType, quantity] of Object.entries(this.availablePieces)) {
             this.addPiece(pieceType, quantity);
         }
         //this.createPieceTray(); // Update the piece tray to reflect changes
@@ -56,6 +50,55 @@ class UI {
                 this.toggleDropdown();
         });
     }
+
+    destroy() {
+        // Clear notifications
+        this.notifications.forEach(notification => {
+            if (notification) {
+                notification.destroy(); // Assuming Notification has a destroy method
+            }
+        });
+        this.notifications = []; // Clear the array after destroying
+    
+        // Destroy the notification container if it exists
+        if (this.notificationContainer) {
+            this.notificationContainer.destroy();
+            this.notificationContainer = null;
+        }
+    
+        // Clear piece tray and icons
+        if (this.pieceTray) {
+            this.pieceTray.destroy(); // Assuming pieceTray is a Phaser Game Object
+            this.pieceTray = null;
+        }
+        
+        Object.values(this.pieceIcons).forEach(icon => {
+            if (icon) {
+                icon.destroy(); // Assuming icons have a destroy method
+            }
+        });
+        this.pieceIcons = {}; // Clear the icons object
+    
+        // Clean up buttons if they exist
+        if (this.rotateClockwiseButton) {
+            this.rotateClockwiseButton.destroy();
+            this.rotateClockwiseButton = null;
+        }
+        if (this.rotateCounterclockwiseButton) {
+            this.rotateCounterclockwiseButton.destroy();
+            this.rotateCounterclockwiseButton = null;
+        }
+    
+        // Remove event listeners
+        this.scene.input.off('pointerdown');
+        this.scene.scale.off('resize');
+    
+        // Optionally reset any other properties
+        this.uiContainer = null;
+        this.highlightedTile = null;
+        
+        console.log("UI destroyed and resources cleaned up.");
+    }    
 
     createUI() {
         // Create the UI container
@@ -149,12 +192,12 @@ class UI {
         const padding = Math.round(pieceWidth / 5);
         const trayHeight = Math.round(pieceHeight + 2 * padding);
         const maxTrayWidth = Math.round(camera.width * 0.75);
-        const adjustedWidth = Math.min((pieceWidth + spacing) * Object.keys(this.startingPieces).length, maxTrayWidth);
+        const adjustedWidth = Math.min((pieceWidth + spacing) * Object.keys(this.availablePieces).length, maxTrayWidth);
         const startX = Math.round((camera.width / 2) - (adjustedWidth / 2)); // Center horizontally
         const startY = Math.round(camera.height - pieceHeight - (padding * 3)); // Position at the bottom
 
         // Draw a semi-transparent rectangle for tray background with the player's color
-        const playerColorHex = this.scene.gameManager.playerColors[this.scene.player.playerNumber].color;
+        const playerColorHex = this.scene.gameManager.playerColors[this.playerNumber].color;
         const playerColor = Phaser.Display.Color.HexStringToColor(playerColorHex).color;
         this.trayRectangle = new Phaser.Geom.Rectangle(0, 0, adjustedWidth, trayHeight);
         const backgroundGraphics = this.scene.add.graphics()
@@ -203,11 +246,11 @@ class UI {
             pieceIcon.displayHeight = pieceHeight;
     
             // Recolor and set texture
-            const piece = new Piece(this.scene, 0, 0, pieceType, this.scene.player.playerNumber);
+            const piece = new Piece(this.scene, 0, 0, pieceType, this.playerNumber);
             piece.recolorSprite();
     
-            if (this.scene.textures.exists('recolored_piece_' + pieceType + '_' + this.scene.player.playerNumber)) {
-                pieceIcon.setTexture('recolored_piece_' + pieceType + '_' + this.scene.player.playerNumber);
+            if (this.scene.textures.exists('recolored_piece_' + pieceType + '_' + this.playerNumber)) {
+                pieceIcon.setTexture('recolored_piece_' + pieceType + '_' + this.playerNumber);
             }
     
             // Display the quantity above the icon
@@ -279,7 +322,7 @@ class UI {
                     const { boardX, boardY } = this.scene.board.screenToBoard(worldPoint.x, worldPoint.y); // Convert screen coordinates to board coordinates
                     const isLegal = this.scene.board.isLegalPlacement(boardX, boardY, pieceType);
                     if (isLegal === null) {
-                        this.scene.board.addPiece(boardX, boardY, pieceType, this.scene.player.playerNumber)
+                        this.scene.board.addPiece(boardX, boardY, pieceType, this.playerNumber, false);
                          this.availablePieces[pieceType] -= 1; // Decrement available pieces on successful placement
                          this.createPieceTray();
                     } else {

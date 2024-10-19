@@ -30,6 +30,12 @@ class Piece {
 
     constructor(scene, x, y, type, player) {
         this.scene = scene;
+        this.board = this.scene.board;
+        this.gameManager = scene.gameManager;
+        
+        this.player = scene.gameManager.players[player];
+        this.playerNumber = this.player.playerNumber;
+        this.id = this.gameManager.pieceIdCounter++; // Assign a unique ID and increment
         this.pos = {x, y};
         // Determine the type index from either a string or number
         if (typeof type === 'string') {
@@ -46,7 +52,6 @@ class Piece {
         this.orthogonalRange = Piece.moves[this.type].orthogonalRange;
         this.diagonalRange = Piece.moves[this.type].diagonalRange;
         this.isMounted = Piece.moves[this.type].isMounted;
-        this.playerNumber = player;
         this.connectingCastle = null;
         
         // Create the piece sprite and add it to the scene
@@ -60,9 +65,9 @@ class Piece {
         // Set depth
         // Castle must appear below other pieces
         if (this.typeName === 'castleInner' || this.typeName === 'castleOuter') {
-            this.sprite.setDepth(0)
+            this.sprite.setDepth(0);
         } else {
-            this.sprite.setDepth(1)
+            this.sprite.setDepth(1);
         }
         
         // Make the piece sprite interactive

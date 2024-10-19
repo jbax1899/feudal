@@ -1,6 +1,8 @@
 class Notification {
     constructor(scene, text, color) {
         this.scene = scene;
+        this.gameManager = this.scene.gameManager;
+
         this.camera = scene.cameras.main;
         this.container = this.scene.ui.notificationContainer;
         this.text = text;
@@ -19,7 +21,7 @@ class Notification {
         if (color != undefined) {
             this.bgColor = color;
         } else {
-            this.bgColor = scene.gameManager.playerColors[this.scene.player.playerNumber].color;
+            this.bgColor = scene.gameManager.playerColors[this.gameManager.mainPlayerNumber].color;
         }
         
         // Create the semi-transparent background rectangle

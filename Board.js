@@ -5,14 +5,15 @@ class Board {
         this.scene = scene;
         this.boardContainer = null;
         this.tileSize = 64;
+        this.numRows, this.numCols;
         this.pieces = [];
+        this.pieceIdCounter = 0; // Global counter to assign unique IDs
         this.moveCircles = [];
         this.selectedPiece = null;
-        this.selectedPlayer = this.scene.player.playerNumber;
+        this.selectedPlayer = this.scene.gameManager.mainPlayerNumber;
         this.castleRotation = 0;
         this.castleRotationLast = 0;
         this.obfuscation = null;
-        this.debug = true;
     }
 
     create() {
@@ -72,6 +73,10 @@ class Board {
                     }
                 }
 
+                if (key === 'r') {
+                    this.scene.restartGame();
+                } 
+
                 // Change castle rotation for creation
                 if (key === 'ArrowLeft') {
                     this.castleRotationLast = this.castleRotation;
@@ -101,7 +106,9 @@ class Board {
         });
 
         // Event listener for clicks. Was this.boardContainer, but only worked for top-left quarter of board?
-        this.scene.input.off('pointerdown'); // Remove old listener if it exists (when we re-create the board during setup)
+        //
+        //this.scene.input.off('pointerdown'); // Remove old listener if it exists (when we re-create the board during setup)
+        //
         this.scene.input.on('pointerdown', (pointer) => {
             // Left-click
             if (pointer.leftButtonDown()) {
@@ -142,6 +149,46 @@ class Board {
         });
     }
 
+    destroy() {
+        // Remove all pieces from the board
+        this.pieces.forEach(piece => {
+            if (piece.sprite) {
+                piece.sprite.destroy(); // Destroy the sprite if it exists
+            }
+        });
+    
+        // Clear the pieces array
+        this.pieces = [];
+    
+        // Optionally, clear any move circles if needed
+        this.moveCircles.forEach(circle => {
+            if (circle) {
+                circle.destroy(); // Destroy move circles
+            }
+        });
+        this.moveCircles = [];
+    
+        // Reset relevant properties
+        this.selectedPiece = null;
+        this.selectedPlayer = this.scene.player.playerNumber;
+        this.castleRotation = 0;
+        this.castleRotationLast = 0;
+    
+        // Clean up keyboard listeners
+        this.scene.input.keyboard.off('keyup');
+        this.scene.input.off('pointerdown');
+    
+        // Optionally reset the board container or other UI elements
+        if (this.boardContainer) {
+            this.boardContainer.destroy(); // Destroy the container if it exists
+            this.boardContainer = null;
+        }
+        
+        if (this.debug) {
+            console.log("Board destroyed and resources cleaned up.");
+        }
+    }    
+
     drawBoard() {
         const tiles = {
             1: 'grass',
@@ -150,11 +197,11 @@ class Board {
         };
     
         const boardData = this.scene.boardData;
-        const numRows = boardData.tiles.length;
-        const numCols = boardData.tiles[0].length;
+        this.numRows = boardData.tiles.length;
+        this.numCols = boardData.tiles[0].length;
     
-        for (let row = 0; row < numRows; row++) {
-            for (let col = 0; col < numCols; col++) {
+        for (let row = 0; row < this.numRows; row++) {
+            for (let col = 0; col < this.numCols; col++) {
                 const tileType = boardData.tiles[row][col];
                 const tileKey = tiles[tileType];
                 if (tileKey) {
@@ -179,12 +226,12 @@ class Board {
         // Vertical line between columns 12 and 13
         thickLineGraphics.beginPath();
         thickLineGraphics.moveTo(12 * this.tileSize, 0);
-        thickLineGraphics.lineTo(12 * this.tileSize, numRows * this.tileSize);
+        thickLineGraphics.lineTo(12 * this.tileSize, this.numRows * this.tileSize);
         thickLineGraphics.strokePath();
         // Horizontal line between rows 12 and 13
         thickLineGraphics.beginPath();
         thickLineGraphics.moveTo(0, 12 * this.tileSize);
-        thickLineGraphics.lineTo(numCols * this.tileSize, 12 * this.tileSize);
+        thickLineGraphics.lineTo(this.numCols * this.tileSize, 12 * this.tileSize);
         thickLineGraphics.strokePath();
         // Set depth of board container
         this.boardContainer.setDepth(-1);
@@ -237,6 +284,11 @@ class Board {
         return pieces.length > 0 ? pieces : null;
     }
 
+    // Lookup function to find a piece by its unique ID
+    findPieceById(id) {
+        return this.pieces.find(piece => piece.id === id) || null; // Return piece if found, else null
+    }
+
     // Method to check if placement of a piece at a location on the board is legal
     isLegalPlacement(boardX, boardY, type) {
         // Validate type
@@ -246,12 +298,12 @@ class Board {
         // Ensure the coordinates are within the board bounds
         if (!this.isCoordinate(boardX, boardY)) {
             return `Cannot place piece - Invalid board coordinates: (${boardX}, ${boardY})`;
-        }
+        }87
         // Cannot place on obscured enemy's side
-        if (this.obfuscation !== null
-            && boardY < Math.ceil(this.scene.boardData.tiles[0].length / 2)) {
-            return `Cannot place piece on enemy's side`;
-        }
+        //if (this.obfuscation !== null
+        //    && boardY < Math.ceil(this.scene.boardData.tiles[0].length / 2)) {
+        //    return `Cannot place piece on enemy's side`;
+        //}
         // Cannot place any piece on a mountain
         if (this.getTile(boardX, boardY) === 3) {
             return `Cannot place piece on mountain`;
@@ -270,16 +322,55 @@ class Board {
     }
 
     // Method to add a piece at the specified board coordinates
-    addPiece(boardX, boardY, type, player) {
+    addPiece(boardX, boardY, type, player, quiet) {
         // Check legality of placement
         const isLegal = this.isLegalPlacement(boardX, boardY, type);
         if (isLegal !== null) {
-            console.log(isLegal);
+            if (quiet === false) {
+                console.log(isLegal); // Sometimes we don't want this output, like during AI placement
+            }
             return false;
         }
 
         // Convert board coordinates to screen coordinates
         const { x, y } = this.boardToScreen(boardX, boardY);
+
+        // If placing an outer castle piece, place the adjacent inner castle piece based on rotation
+        let outerCastlePiece;
+        if (type === 'castleInner') {
+            if (this.isLegalCastlePlacement(boardX, boardY, this.castleRotation, quiet)) {
+                let outerCastleX = boardX;
+                let outerCastleY = boardY;
+                switch (this.castleRotation) {
+                    case 0: // right
+                        outerCastleX += 1;
+                        break;
+                    case 1: // down
+                        outerCastleY += 1;
+                        break;
+                    case 2: // left
+                        outerCastleX -= 1;
+                        break;
+                    case 3: // up
+                        outerCastleY -= 1;
+                        break;
+                }
+
+                // Convert the adjacent board coordinates to screen coordinates
+                const { x: outerCastleScreenX, y: outerCastleScreenY } = this.boardToScreen(outerCastleX, outerCastleY);
+
+                // Create and place the outer castle piece
+                outerCastlePiece = new Piece(this.scene, outerCastleScreenX, outerCastleScreenY, Piece.types.indexOf('castleOuter'), player);
+                outerCastlePiece.pos.x = outerCastleX;
+                outerCastlePiece.pos.y = outerCastleY;
+                this.pieces.push(outerCastlePiece);
+                
+                
+            } else {
+                // Castle cannot be placed here
+                return false;
+            }
+        }
 
         // Create and place the main piece
         const piece = new Piece(this.scene, x, y, type, player);
@@ -291,50 +382,61 @@ class Board {
                 + " piece at " + boardX + "," + boardY 
                 + " for player " + this.selectedPlayer);
         }
-
-        // If placing an outer castle piece, also place the adjacent inner castle piece based on rotation
-        if (type === 'castleInner') {
-            let outerCastleX = boardX;
-            let outerCastleY = boardY;
-            switch (this.castleRotation) {
-                case 0: // right
-                    outerCastleX += 1;
-                    break;
-                case 1: // down
-                    outerCastleY += 1;
-                    break;
-                case 2: // left
-                    outerCastleX -= 1;
-                    break;
-                case 3: // up
-                    outerCastleY -= 1;
-                    break;
-                default:
-                    console.error(`Invalid castle rotation: ${this.castleRotation}`);
-                    return false;
-            }
-
-            // Ensure the adjacent space for the outer castle is empty
-            if (!this.isCoordinate(outerCastleX, outerCastleY) || this.getPieces(outerCastleX, outerCastleY)) {
-                console.error(`Cannot place outer castle - Adjacent space is already occupied or invalid: (${outerCastleX}, ${outerCastleY})`);
-                return false; // Adjacent space is already occupied or invalid
-            }
-
-            // Convert the adjacent board coordinates to screen coordinates
-            const { x: outerCastleScreenX, y: outerCastleScreenY } = this.boardToScreen(outerCastleX, outerCastleY);
-
-            // Create and place the outer castle piece
-            const outerCastlePiece = new Piece(this.scene, outerCastleScreenX, outerCastleScreenY, Piece.types.indexOf('castleOuter'), player);
-            outerCastlePiece.pos.x = outerCastleX;
-            outerCastlePiece.pos.y = outerCastleY;
-            outerCastlePiece.connectingCastle = piece; // castles can reference each other
+        if (outerCastlePiece) {
+            // castles can reference each other
+            outerCastlePiece.connectingCastle = piece; 
             piece.connectingCastle = outerCastlePiece;
-            this.pieces.push(outerCastlePiece);
-            /*console.log("Created outer castle piece at " + outerCastleX + "," + outerCastleY 
-                        + " for player " + this.selectedPlayer);*/
-            
+
             // Rotate the inner castle piece to face the outer castle piece
             piece.rotate(this.castleRotation);
+        }
+
+        // If AI, and if during setup phase, make piece invisible (until reveal)
+        if (piece.player.isAI) {
+            piece.sprite.visible = false;
+            if (outerCastlePiece) {
+                outerCastlePiece.sprite.visible = false;
+            }
+        }
+
+        return true;
+    }
+
+    // Method to check if placing a castle is legal
+    isLegalCastlePlacement(innerX, innerY, rotation, quiet) {
+        let outerX = innerX;
+        let outerY = innerY;
+        switch (rotation) {
+            case 0: // right
+                outerX += 1;
+                break;
+            case 1: // down
+                outerY += 1;
+                break;
+            case 2: // left
+                outerX -= 1;
+                break;
+            case 3: // up
+                outerY -= 1;
+                break;
+            default:
+                console.error(`Invalid castle rotation: ${rotation}`);
+                return false;
+        }
+
+        // Check if the inner and outer spaces are valid and unoccupied
+        if (!this.isCoordinate(innerX, innerY) || this.getPieces(innerX, innerY)) {
+            if (quiet === false) { // Sometimes we don't want this output, like during AI placement
+                console.error(`Cannot place inner castle - Space is already occupied or invalid: (${innerX}, ${innerY})`);
+            }
+            return false;
+        }
+
+        if (!this.isCoordinate(outerX, outerY) || this.getPieces(outerX, outerY)) {
+            if (quiet === false) { // Sometimes we don't want this output, like during AI placement
+                console.error(`Cannot place outer castle - Adjacent space is already occupied or invalid: (${outerX}, ${outerY})`);
+            }
+            return false;
         }
 
         return true;
@@ -621,14 +723,9 @@ class Board {
     }
 
     obscure() {
-        // Get the dimensions of the board
-        const boardData = this.scene.boardData;
-        const numRows = boardData.tiles.length;
-        const numCols = boardData.tiles[0].length;
-
         // Calculate the screen coordinates of the top-left and bottom-right corners
         const topLeft = this.boardToScreen(0, 0);                                        // Top-left corner (row 0, col 0)
-        const bottomRight = this.boardToScreen(numRows, Math.floor(numCols / 2));    // Bottom-right corner for top half
+        const bottomRight = this.boardToScreen(this.numRows, Math.floor(this.numCols / 2));    // Bottom-right corner for top half
 
         // Draw a semi-transparent gray rectangle over the top half of the board
         this.obfuscation = this.scene.add.graphics().fillStyle(0x808080, 0.7);
@@ -639,10 +736,16 @@ class Board {
     }
 
     unobscure() {
+        // Clear obfuscation / fog of war
         if (this.obfuscation !== null) {
             this.obfuscation.destroy();
             this.obfuscation = null;
         }
+
+        // Reveal all units on the board
+        Object.values(this.pieces).forEach(piece => {
+            piece.sprite.visible = true; // Set each piece's sprite to visible
+        });
     }
 }
 
