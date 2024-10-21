@@ -19,7 +19,7 @@ class GameManager {
         
         this.players = [
             new Player(this.scene, 0, true),
-            // new Player(this.scene, 2),
+            // new Player(this.scene, 1, true),
             // new Player(this.scene, 3),
             // new Player(this.scene, 4),
             // new Player(this.scene, 5),
@@ -112,20 +112,24 @@ class GameManager {
             this.scene.ui.destroyRotateIcons();
             this.finalizeBoardRotation();
 
+            // Create "end placement" button
+            this.scene.ui.createEndButton();
+
             // Loop through players for piece placement, one at a time
             this.placePiecesForPlayers();
         }
 
         if (this.stage.name === "play") {
-            // Remove piece tray
+            // Remove piece tray and "end placement" button
             this.scene.ui.destroyPieceTray();
+            this.scene.ui.destroyEndButton();
+
+            // Create end turn button
+            this.scene.ui.createEndButton();
             
             // Unobscure enemy side
             this.scene.board.unobscure();
             console.log("Unobscured board.");
-
-            // Create end turn button
-            this.scene.ui.createEndTurn();
         }
 
         if (this.stage.name === "gameover") {
@@ -174,22 +178,19 @@ class GameManager {
 
             if (currentPlayer.isAI) {
                 currentPlayer.placeUnits(); // AI places units automatically
-                this.nextTurn();
+                this.nextTurnPlace();
                 placeNextPlayer();
             } else {
-                this.scene.ui.createPieceTray(currentPlayer, () => {
-                    this.nextTurn();
-                    placeNextPlayer();
-                });
+                this.nextTurnPlace();
             }
         };
 
         placeNextPlayer(); // start looping through players
     }
 
-    nextTurn() {
-        this.turn++;
+    nextTurnPlace() {
         this.playerTurn = (this.playerTurn + 1) % this.players.length;
+        this.turn++;
     }
 
     turnBoard(direction) {
