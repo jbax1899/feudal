@@ -16,12 +16,10 @@ class Player {
             'archer': 1,
             'castleInner': 1
         };
-        this.hand = { ...this.startingHand }; // Shallow copy
+        this.hand = JSON.parse(JSON.stringify(this.startingHand)); // Deep copy
     }
 
     destroy() {
-        // Reset player properties
-        this.hand = { ...this.startingHand }; // Shallow copy
     }
 
     /// [AI] Places units on the board during the setup phase

@@ -8,7 +8,9 @@ class UI {
 
         this.player = this.gameManager.mainPlayer;
         this.playerNumber = this.gameManager.mainPlayerNumber;
-        this.availablePieces = this.gameManager.players[this.playerNumber].hand; // our "hand" of pieces
+
+        // our "hand" of pieces
+        this.hand = this.gameManager.players[this.playerNumber].hand;
 
         this.colors = {
             lightteal: 0x66cccc,
@@ -30,12 +32,6 @@ class UI {
         // Create UI and group elements into the container
         this.createUI();
 
-        // Add starting pieces
-        for (const [pieceType, quantity] of Object.entries(this.availablePieces)) {
-            this.addPiece(pieceType, quantity);
-        }
-        //this.createPieceTray(); // Update the piece tray to reflect changes
-
         // Set up drag-and-drop functionality
         this.setupDragAndDrop();
 
@@ -47,7 +43,7 @@ class UI {
         // Event listener for clicks anywhere on the screen
         this.scene.input.on('pointerdown', (pointer) => {
             if (this.dropdownContainer.visible)
-                this.toggleDropdown();
+                this.toggleDropdown(); // hide hamburger menu
         });
     }
 
@@ -153,35 +149,59 @@ class UI {
         }
     }
 
-    createEndTurn() {
-        // Have we made the arrows yet?
-        if (this.endTurnButton == null) {
-            this.endTurnButton = this.scene.add.image(0, 0, 'end_turn').setInteractive();
-            this.endTurnButton.setScale(1);
-            this.uiContainer.add(this.endTurnButton);
+    // Handles the "end setup" and "end turn" buttons
+    createEndButton() {
+        // Destroy button if it already exists
+        if (this.endButton !== null) {
+            this.endButton = null;
+        }
 
-            this.endTurnButton.on('pointerdown', () => {
+        // "end setup"
+        if (this.gameManager.stage.name === "placement") {
+            this.endButton = this.scene.add.image(0, 0, 'end_placement').setInteractive();
+            this.endButton.on('pointerdown', () => {
+                // If the piece tray has no quantity left, allow click to progress stage
+                let allPiecesPlaced = true;
+
+                for (const pieceType in this.hand) {
+                    if (this.hand[pieceType] > 0) {
+                        allPiecesPlaced = false;
+                        break;
+                    }
+                }
+
+                if (allPiecesPlaced) {
+                    this.scene.gameManager.advanceStage();
+                } else {
+                    this.scene.ui.addNotification("Must place all units before starting!", "ffa500");
+                }
+            });
+        // "end turn"
+        } else {
+            this.endButton = this.scene.add.image(0, 0, 'end_turn').setInteractive();
+            this.endButton.on('pointerdown', () => {
                 this.scene.gameManager.endTurn();
             });
         }
+        this.endButton.setScale(1);
+        this.uiContainer.add(this.endButton);
+
         // Update position
         const camera = this.scene.cameras.main;
-        this.endTurnButton.x = camera.width * 0.5;
-        this.endTurnButton.y = camera.height - 100;
-    }
+        this.endButton.x = camera.width * 0.5;
+        this.endButton.y = camera.height - 100;
 
-    destroyEndTurn() {
-        if (this.endTurnButton !== null) {
-            this.endTurnButton.destroy();
-            this.endTurnButton = null;
+        // If "end placement", place button above the piece tray
+        if (this.gameManager.stage.name === "placement") {
+            this.endButton.y -= this.pieceTray.height;
         }
     }
 
-    addPiece(pieceType, count) {
-        if (!this.availablePieces[pieceType]) {
-            this.availablePieces[pieceType] = 0;
+    destroyEndButton() {
+        if (this.endButton!== null) {
+            this.endButton.destroy();
+            this.endButton = null;
         }
-        this.availablePieces[pieceType] += count;
     }
 
     createPieceTray() {
@@ -192,7 +212,7 @@ class UI {
         const padding = Math.round(pieceWidth / 5);
         const trayHeight = Math.round(pieceHeight + 2 * padding);
         const maxTrayWidth = Math.round(camera.width * 0.75);
-        const adjustedWidth = Math.min((pieceWidth + spacing) * Object.keys(this.availablePieces).length, maxTrayWidth);
+        const adjustedWidth = Math.min((pieceWidth + spacing) * Object.keys(this.hand).length, maxTrayWidth);
         const startX = Math.round((camera.width / 2) - (adjustedWidth / 2)); // Center horizontally
         const startY = Math.round(camera.height - pieceHeight - (padding * 3)); // Position at the bottom
 
@@ -232,9 +252,9 @@ class UI {
         this.trayBounds = new Phaser.Geom.Rectangle(this.mask.x, this.mask.y, maskWidth, maskHeight); // interactible tray bounds, global pos/size
 
         // Add pieces to the piece tray
-        const maxScrollOffset = (adjustedWidth - padding - (pieceWidth + spacing)) - ((Object.keys(this.availablePieces).length - 1) * (pieceWidth + spacing));
+        const maxScrollOffset = (adjustedWidth - padding - (pieceWidth + spacing)) - ((Object.keys(this.hand).length - 1) * (pieceWidth + spacing));
         this.trayScrollOffset = Math.min(Math.max(this.trayScrollOffset, maxScrollOffset), 0);
-        Object.entries(this.availablePieces).forEach(([pieceType, quantity], index) => {
+        Object.entries(this.hand).forEach(([pieceType, quantity], index) => {
             const x = Math.round((pieceWidth / 2) + index * (pieceWidth + spacing) + padding + this.trayScrollOffset);
             const y = Math.round((pieceHeight / 2) + padding);
             
@@ -274,8 +294,10 @@ class UI {
     }
 
     destroyPieceTray() {
-        this.pieceTray.destroy();
-        this.pieceTray = null;
+        if (this.pieceTray !== null) {
+            this.pieceTray.destroy();
+            this.pieceTray = null;
+        }
     }
 
     setupDragAndDrop() {
@@ -284,7 +306,7 @@ class UI {
             const pieceType = gameObject.texture.key.split('_')[2]; // Get piece type from texture key
             this.draggedPieceType = pieceType;
             // Check if there are available pieces
-            if (this.availablePieces[pieceType] > 0) {
+            if (this.hand[pieceType] > 0) {
                 this.originalPiece = gameObject; // Store a reference to the original piece
                 this.startPos = { x: pointer.x, y: pointer.y };
                 this.originalPiece.setAlpha(0.5); // Make the original piece semi-transparent
@@ -292,7 +314,7 @@ class UI {
                 // Create a copy of the piece for dragging
                 // If dragging a castle, get the full sprite
                 if (pieceType === 'castleInner') {
-                    const tempCastlePiece = new Piece(this.scene, globalPointer.x, globalPointer.y, 'castleBoth', this.scene.player.playerNumber);
+                    const tempCastlePiece = new Piece(this.scene, globalPointer.x, globalPointer.y, 'castleBoth', this.gameManager.mainPlayerNumber);
                     this.draggedPiece = tempCastlePiece.sprite
                         .setOrigin(0.25, 0.5);
                 } else {
@@ -323,7 +345,7 @@ class UI {
                     const isLegal = this.scene.board.isLegalPlacement(boardX, boardY, pieceType);
                     if (isLegal === null) {
                         this.scene.board.addPiece(boardX, boardY, pieceType, this.playerNumber, false);
-                         this.availablePieces[pieceType] -= 1; // Decrement available pieces on successful placement
+                         this.hand[pieceType] -= 1; // Decrement available pieces on successful placement
                          this.createPieceTray();
                     } else {
                         this.scene.ui.addNotification(isLegal);
